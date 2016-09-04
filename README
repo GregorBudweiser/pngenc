@@ -1,0 +1,41 @@
+README
+======
+This is pngenc, a fast png encoder focusing on performance rather than compression.
+It features two fast modes: Uncompressed and "Huffman Only" compression. In those 
+modes pngenc is about 4-5 times faster than libpng and about 10x faster than libpng's default
+compression settings. For natural images the compression ratio of the "Huffman Only" 
+compression is 10% worse than that of full Huffman + Dictionary compression.
+For synthetic images pngenc's compression ratio may not be optimal (but speed is still there).
+
+Pngenc is written in C and compiles down to ~32KB with default settings.
+It is optimized for x86_64 machines but also compiles and runs on arm (e.g. Raspberry PI 2).
+
+
+COMPILE
+=======
+To build pngenc just use cmake:
+
+cd /to/pngenc
+mkdir build
+cd build
+cmake ..
+
+BENCHMARKS
+==========
+Optionally you can build the benchmarking examples. 
+You can enable them with a cmake define (requires libpng and a C++ compiler):
+
+cd /to/pngenc
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TOOLS=1 ..
+
+JAVA BINDINGS
+=============
+Optionally you can build a jni-version of pngenc.
+You have to specify the path to your jdk in <pngenc_dir>/source/pngenc/CMakeLists.txt
+
+cd /to/pngenc
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_JAVA=1 ..

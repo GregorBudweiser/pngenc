@@ -1,0 +1,36 @@
+set(pngenc_sources
+    "adler32.h"
+    "adler32.c"
+    "crc32.h"
+    "crc32.c"
+    "huffman.h"
+    "huffman.c"
+    "node.h"
+    "node.c"
+    "node_custom.h"
+    "node_data_gen.h"
+    "node_data_gen.c"
+    "node_deflate.h"
+    "node_deflate.c"
+    "node_idat.h"
+    "node_idat.c"
+    "pngenc.h"
+    "pngenc.c"
+    "utils.h"
+    "utils.c"
+)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+add_library(pngenc SHARED ${pngenc_sources})
+
+add_executable(example "main.c" "pngenc.h")
+target_link_libraries(example pngenc m)
+
+# build native lib for java
+if(BUILD_JAVA)
+    message(STATUS "OPTIONAL JAVA BINDINGS ENABLED (REQUIRES JDK8)")
+    message(STATUS "-- You may need to adjust the jdk path in the build script")
+    INCLUDE_DIRECTORIES("~/Downloads/jdk1.8.0_102/include/")
+    INCLUDE_DIRECTORIES("~/Downloads/jdk1.8.0_102/include/linux")
+    add_library(pngenc4j SHARED ${pngenc_sources} "java.h" "java.c")
+endif()
