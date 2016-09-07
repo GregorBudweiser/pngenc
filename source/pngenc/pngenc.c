@@ -22,7 +22,7 @@ int write_to_file_callback(const void * data, uint32_t data_len,
                            void * user_data);
 int write_image_data(const pngenc_image_desc * descriptor,
                      pngenc_user_write_callback callback, void * user_data);
-
+PNGENC_API
 int write_png_file(const pngenc_image_desc * descriptor,
                    const char * filename) {
     FILE * file;
@@ -42,6 +42,7 @@ int write_png_file(const pngenc_image_desc * descriptor,
     return result;
 }
 
+PNGENC_API
 int write_png_func(const pngenc_image_desc * descriptor,
                    pngenc_user_write_callback write_data_callback,
                    void * user_data) {

@@ -30,6 +30,9 @@ create_test(unit_adler)
 create_test(unit_huffman)
 create_test(unit_crc)
 
+# Integration tests
+create_test(integration_save_png)
+
 # Perf tests
 
 # CTEST stuff
@@ -38,9 +41,12 @@ file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/main.c")
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/java.h")
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/java.c")
+# remove dll interface sources and test them via dll
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/pngenc.h")
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/pngenc.c")
 
 #message(STATUS "test-src: ${pngenc_sources}")
-
+include_directories("../source")
 create_test_sourcelist(test_sources test_driver.c ${gen_test_sources})
 add_executable(${test_prefix} ${test_sources} ${fastpng_sources} ${pngenc_sources} ${system_sources} "${CMAKE_CURRENT_SOURCE_DIR}/common.h")
-target_link_libraries(${test_prefix} m)
+target_link_libraries(${test_prefix} m pngenc)

@@ -2,15 +2,13 @@
 #include <stdint.h>
 
 #ifdef __MSVCRT__
-    #undef PNGENC_EXPORT
     #if PNGENC_EXPORT
-        #define PNGENC_EXPORT __declspec( dllexport )
+        #define PNGENC_API __declspec( dllexport )
     #else
-        #define PNGENC_EXPORT __declspec( dllimport )
+        #define PNGENC_API __declspec( dllimport )
     #endif
 #else
-    #undef PNGENC_EXPORT
-    #define PNGENC_EXPORT
+    #define PNGENC_API
 #endif
 
 #define PNGENC_VERSION_MAJOR 0
@@ -44,12 +42,12 @@ typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,
 /**
  * Simply write png to specified file.
  */
-PNGENC_EXPORT int write_png_file(const pngenc_image_desc * descriptor,
-                                 const char * filename);
+PNGENC_API int write_png_file(const pngenc_image_desc * descriptor,
+                              const char * filename);
 
 /**
  * Encode png and use callback for storing to custom location (e.g. in memory).
  */
-PNGENC_EXPORT int write_png_func(const pngenc_image_desc * descriptor,
-                                 pngenc_user_write_callback write_data_callback,
-                                 void * user_data);
+PNGENC_API int write_png_func(const pngenc_image_desc * descriptor,
+                              pngenc_user_write_callback write_data_callback,
+                              void * user_data);

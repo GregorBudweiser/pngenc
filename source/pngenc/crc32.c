@@ -47,7 +47,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <pthread.h>
 
 /* CRC-32 (zlib) polynomial in reversed bit order. */
 #define POLY 0xEDB88320
