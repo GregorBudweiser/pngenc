@@ -1,135 +1,116 @@
+/*
+ * Adapted from
+ * http://zarb.org/~gc/html/libpng.html
+ */
+
 #include <png.h>
 #include <cstdio>
 #include <cstdint>
 #include "../system/TimerLog.h"
-//#include "../fastpng/imageData.h"
 #include <cstring>
+
+void write(const char * filename, bool compress,
+           int width, int height, uint8_t * data) {
+
+    uint8_t ** row_pointers = new uint8_t*[height];
+    for(int y = 0; y < height; y++) {
+        row_pointers[y] = data + 3*width*y;
+    }
+
+    FILE *fp = fopen(filename, "wb");
+    if(!fp) abort();
+
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) abort();
+
+    png_infop info = png_create_info_struct(png);
+    if (!info) abort();
+
+    if (setjmp(png_jmpbuf(png))) abort();
+
+    png_init_io(png, fp);
+
+
+    if(compress) {
+        png_set_compression_level(png, 2);
+        png_set_compression_strategy(png, 2);
+        png_set_filter(png, 0, PNG_FILTER_SUB);
+    } else {
+        png_set_compression_level(png, 0);
+        png_set_compression_strategy(png, 0);
+        png_set_filter(png, 0, PNG_FILTER_NONE);
+    }
+
+    // Output is 8bit depth, RGBA format.
+    png_set_IHDR(
+                png,
+                info,
+                width, height,
+                8,
+                PNG_COLOR_TYPE_RGB,
+                PNG_INTERLACE_NONE,
+                PNG_COMPRESSION_TYPE_DEFAULT,
+                PNG_FILTER_TYPE_DEFAULT
+                );
+    png_write_info(png, info);
+
+    // To remove the alpha channel for PNG_COLOR_TYPE_RGB format,
+    // Use png_set_filler().
+    //png_set_filler(png, 0, PNG_FILLER_AFTER);
+
+    png_write_image(png, row_pointers);
+    png_write_end(png, NULL);
+
+    delete [] row_pointers;
+
+    fclose(fp);
+}
 
 int main()
 {
     const int W = 1920;
     const int H = 1080;
+    const int C = 3;
 
-    uint8_t *mydata = new uint8_t[3*W*H];
+    // Load raw image data (1920x1080x3 bytes)
+    FILE * file = fopen("data.bin", "rb");
+    if(!file) {
+        printf("Could not find raw image data input.\n");
+        printf("Please provide binary image data in the file 'data.bin'.\n");
+        printf("Expecting 1920x1080x3 bytes of data.\n");
+        return 0;
+    }
+
+    uint8_t *buf = new uint8_t[3*W*H];
+    fread(buf, C, W*H, file);
+    fclose(file);
+
+    for(int j = 0; j < 2; j++)
     {
-        FILE * file;
-        file = fopen("data.bin", "rb");
-        fread(mydata, 3, W*H, file);
-        fclose(file);
-    }
+        bool compressed = (bool)j;
 
-    FILE * fp;
-    png_structp png_ptr = NULL;
-    png_infop info_ptr = NULL;
-    size_t x, y;
-    png_byte ** row_pointers = NULL;
-    /* "status" contains the return value of this function. At first
-           it is set to a value which means 'failure'. When the routine
-           has finished its work, it is set to a value which means
-           'success'. */
-    int status = -1;
-    /* The following number is set by trial and error only. I cannot
-           see where it it is documented in the libpng manual.
-        */
-    int pixel_size = 3;
-    int depth = 8;
-
-    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png_ptr == NULL) {
-        goto png_create_write_struct_failed;
-    }
-
-    /*png_set_compression_level(png_ptr, 2);
-    png_set_compression_strategy(png_ptr, 2);
-    png_set_filter(png_ptr, 0, PNG_FILTER_SUB);*/
-
-    png_set_compression_level(png_ptr, 0);
-    png_set_compression_strategy(png_ptr, 0);
-    png_set_filter(png_ptr, 0, PNG_FILTER_NONE);
-
-    info_ptr = png_create_info_struct (png_ptr);
-    if (info_ptr == NULL) {
-        goto png_create_info_struct_failed;
-    }
-
-    /* Set up error handling. */
-
-    if (setjmp (png_jmpbuf (png_ptr))) {
-        goto png_failure;
-    }
-
-    /* Set image attributes. */
-
-    png_set_IHDR (png_ptr,
-                  info_ptr,
-                  W,
-                  H,
-                  depth,
-                  PNG_COLOR_TYPE_RGB,
-                  PNG_INTERLACE_NONE,
-                  PNG_COMPRESSION_TYPE_DEFAULT,
-                  PNG_FILTER_TYPE_DEFAULT);
-
-    /* Initialize rows of PNG. */
-
-
-    row_pointers = (png_byte **)png_malloc (png_ptr, H * sizeof (png_byte *));
-    for (y = 0; y < H; ++y) {
-        //png_byte *row = (png_byte*)png_malloc (png_ptr, sizeof (uint8_t) * W * pixel_size);
-        row_pointers[y] = (png_byte*)mydata+y*W*pixel_size;
-    }
-
-    /* Write the image data to "fp". */
-
-
-    {
         LOG_TIME();
         char name[1000];
-        for(int i = 0; i < 10; i++)
+        for(int i = 0; i < 5; i++)
         {
             LOG_TIME();
             sprintf (name, "out%04d.png", i);
-            fp = fopen (name, "wb");
-            png_init_io (png_ptr, fp);
-            {
-                png_set_rows (png_ptr, info_ptr, row_pointers);
-                png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
-            }
-            fclose(fp);
+            write(name, compressed, W, H, buf);
         }
 
-        for(int i = 0; i < 10; i++)
+        for(int i = 0; i < 5; i++)
         {
             LOG_TIME();
 #if defined(WIN32) || defined(__WIN32)
-            fp = fopen ("NUL", "wb");
+            write("nil", compressed, W, H, mydata);
 #else
-            fp = fopen ("/dev/null", "wb");
+            write("/dev/null", compressed, W, H, buf);
 #endif
-            png_init_io (png_ptr, fp);
-            {
-                png_set_rows (png_ptr, info_ptr, row_pointers);
-                png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
-            }
-            fclose(fp);
         }
     }
 
-    /* The routine has successfully written the file, so we set
-           "status" to a value which indicates success. */
-
-    status = 0;
-
-    for (y = 0; y < H; y++) {
-        //png_free (png_ptr, row_pointers[y]);
-    }
-    png_free (png_ptr, row_pointers);
-
-png_failure:
-png_create_info_struct_failed:
-    png_destroy_write_struct (&png_ptr, &info_ptr);
-png_create_write_struct_failed:
-    //fclose (fp);
-fopen_failed:
-    return status;
+    delete [] buf;
+    return 0;
 }
+
+
