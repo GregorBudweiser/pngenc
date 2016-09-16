@@ -5,6 +5,8 @@ set(pngenc_sources
     "crc32.c"
     "huffman.h"
     "huffman.c"
+    "image_descriptor.h"
+    "image_descriptor.c"
     "node.h"
     "node.c"
     "node_custom.h"
@@ -20,11 +22,21 @@ set(pngenc_sources
     "utils.c"
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /DPNGENC_EXPORT=1")
+endif()
+
+# set flags to activate dllexport on win
 add_library(pngenc SHARED ${pngenc_sources})
+# add libm on gnu/linux
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_link_libraries(pngenc m)
+endif()
 
 add_executable(example "main.c" "pngenc.h")
-target_link_libraries(example pngenc m)
+target_link_libraries(example pngenc)
 
 # build native lib for java
 if(BUILD_JAVA)

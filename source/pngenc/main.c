@@ -18,6 +18,7 @@ int main() {
     desc.num_channels = C;
     desc.row_stride = (uint64_t)W*(uint64_t)C;
     desc.strategy = PNGENC_NO_COMPRESSION;
+    desc.bit_depth = 8;
     RETURN_ON_ERROR(write_png_file(&desc, "img_uncompressed.png"));
 
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;

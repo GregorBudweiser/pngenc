@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-#ifdef __MSVCRT__
+#ifdef _MSC_VER
     #if PNGENC_EXPORT
         #define PNGENC_API __declspec( dllexport )
     #else
@@ -34,6 +34,7 @@ typedef struct _pngenc_image_desc {
     uint32_t height;
     pngenc_compression_strategy strategy;
     uint8_t num_channels;
+    uint8_t bit_depth;
 } pngenc_image_desc;
 
 typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <malloc.h>
 #include "common.h"
 #include "../source/pngenc/adler32.h"
 
@@ -53,12 +54,15 @@ int test_adler_1M_buffer() {
 
     // 1M buffer
     const int N = 1024*1024;
-    char buf[N];
+    char * buf = (char*)malloc(N);
     memset(buf, 0, N);
     adler_update(&adler, buf, N);
 
     ASSERT_TRUE(adler.s1 == 1);
     ASSERT_TRUE(adler.s2 == 240);
+
+    free(buf);
+
     return 0;
 }
 

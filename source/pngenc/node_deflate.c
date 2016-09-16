@@ -78,10 +78,10 @@ int64_t write_deflate_compressed(struct _pngenc_node * n, const uint8_t * data,
     }
 
     // TODO: Make this block a function..
-    uint32_t bytes_copied = min_u32(size, node->base.buf_size
-                                        - node->base.buf_pos);
-    memcpy(node->base.buf + node->base.buf_pos, data, bytes_copied);
-    adler_update(&node->adler, node->base.buf + node->base.buf_pos,
+    uint32_t bytes_copied = min_u32(size, (uint32_t)(node->base.buf_size
+                                                   - node->base.buf_pos));
+    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
+    adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
                  bytes_copied);
     node->base.buf_pos += bytes_copied;
 
@@ -132,7 +132,12 @@ int64_t write_deflate_uncompressed(struct _pngenc_node * n,
             uint8_t b_type;
             uint16_t len;
             uint16_t nlen;
-        } block = { 0, 0, node->base.buf_size, 0 };
+        } block = {
+            0,
+            0,
+            (uint16_t)node->base.buf_size,
+            ~(uint16_t)node->base.buf_size
+        };
 
         // write another zlib block
         RETURN_ON_ERROR(node_write(node->base.next,
@@ -144,10 +149,11 @@ int64_t write_deflate_uncompressed(struct _pngenc_node * n,
     }
 
     // consume as much of current data as possible
-    uint32_t bytes_remaining = node->base.buf_size - node->base.buf_pos;
+    uint32_t bytes_remaining = (uint32_t)(node->base.buf_size
+                                        - node->base.buf_pos);
     uint32_t bytes_written = min_u32(bytes_remaining, size);
-    memcpy(node->base.buf + node->base.buf_pos, data, bytes_written);
-    adler_update(&node->adler, node->base.buf + node->base.buf_pos,
+    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_written);
+    adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
                  bytes_written);
     node->base.buf_pos += bytes_written;
     return bytes_written;
@@ -177,7 +183,12 @@ int64_t finish_deflate_uncompressed(struct _pngenc_node * n) {
             uint8_t b_type;
             uint16_t len;
             uint16_t nlen;
-        } block = { 0, 1, node->base.buf_pos, ~node->base.buf_pos };
+        } block = {
+            0,
+            1,
+            (uint16_t)node->base.buf_pos,
+            ~(uint16_t)node->base.buf_pos
+        };
 
         // write last zlib block
         RETURN_ON_ERROR(node_write(node->base.next,
@@ -213,7 +224,7 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
                                huffman_encoder * encoder,
                                uint64_t * bit_offset) {
     RETURN_ON_ERROR(huffman_encoder_add(encoder, node->base.buf,
-                                        node->base.buf_pos));
+                                        (uint32_t)node->base.buf_pos));
     encoder->histogram[256] = 1; // terminator
 
     // codes limited to 15 bits
@@ -335,7 +346,7 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
      *  a single sequence of HLIT + HDIST + 258 values.
      */
     RETURN_ON_ERROR(huffman_encoder_encode(encoder, node->base.buf,
-                                           node->base.buf_pos, data,
+                                           (uint32_t)node->base.buf_pos, data,
                                            bit_offset));
     push_bits(encoder->symbols[256], encoder->code_lengths[256],
               data, bit_offset);

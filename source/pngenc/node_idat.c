@@ -41,7 +41,10 @@ int64_t write_idat(struct _pngenc_node * n, const uint8_t * data,
         struct idat_header {
             uint32_t size;
             uint8_t name[4];
-        } hdr = { swap_endianness32(node->base.buf_size), { 'I', 'D', 'A', 'T' } };
+        } hdr = {
+            swap_endianness32((uint32_t)node->base.buf_size),
+            { 'I', 'D', 'A', 'T' }
+        };
 
         // write another zlib block
         RETURN_ON_ERROR(node_write(node->base.next, (uint8_t*)&hdr, 8));
@@ -62,8 +65,8 @@ int64_t write_idat(struct _pngenc_node * n, const uint8_t * data,
     // consume as much of current data as possible
     int64_t bytes_remaining = node->base.buf_size - node->base.buf_pos;
     int64_t bytes_written = min_i64(bytes_remaining, size);
-    memcpy(node->base.buf + node->base.buf_pos, data, bytes_written);
-    node->crc = crc32c(node->crc, node->base.buf + node->base.buf_pos,
+    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_written);
+    node->crc = crc32c(node->crc, (uint8_t*)node->base.buf + node->base.buf_pos,
                        bytes_written);
     node->base.buf_pos += bytes_written;
     return bytes_written;
@@ -76,7 +79,7 @@ int64_t finish_idat(struct _pngenc_node * n) {
             uint32_t size;
             uint8_t name[4];
         } hdr = {
-            swap_endianness32(node->base.buf_pos),
+            swap_endianness32((uint32_t)node->base.buf_pos),
             { 'I', 'D', 'A', 'T' }
         };
 

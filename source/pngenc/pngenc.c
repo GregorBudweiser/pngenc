@@ -1,4 +1,5 @@
 #include "pngenc.h"
+#include "image_descriptor.h"
 #include "utils.h"
 #include "crc32.h"
 #include "adler32.h"
@@ -15,8 +16,6 @@ int write_ihdr(const pngenc_image_desc * descriptor,
 int write_idat(const pngenc_image_desc * descriptor,
                pngenc_user_write_callback callback, void * user_data);
 int write_iend(pngenc_user_write_callback callback, void * user_data);
-
-int check_descriptor(const pngenc_image_desc * descriptor);
 
 int write_to_file_callback(const void * data, uint32_t data_len,
                            void * user_data);
@@ -90,7 +89,7 @@ int write_ihdr(const pngenc_image_desc * descriptor,
         { 'I', 'H', 'D', 'R' },
         swap_endianness32(descriptor->width),
         swap_endianness32(descriptor->height),
-        8, // bit depth
+        descriptor->bit_depth,
         channel_type[descriptor->num_channels],
         0, // filter is "sub" or "none"
         0, // filter
@@ -279,23 +278,6 @@ int write_iend(pngenc_user_write_callback callback, void * user_data) {
                 crc32c(0xffffffff, (uint8_t*)iend.name, 4) ^ 0xffffffff);
 
     RETURN_ON_ERROR(callback((void*)&iend, 8+4, user_data));
-
-    return PNGENC_SUCCESS;
-}
-
-int check_descriptor(const pngenc_image_desc * descriptor) {
-    if(descriptor->data == NULL)
-        return PNGENC_ERROR_INVALID_ARG;
-
-    if(descriptor->width == 0 || descriptor->height == 0)
-        return PNGENC_ERROR_INVALID_ARG;
-
-    if(descriptor->num_channels > 4)
-        return PNGENC_ERROR_INVALID_ARG;
-
-    if((uint64_t)descriptor->row_stride < (uint64_t)descriptor->width
-                                        * (uint64_t)descriptor->num_channels)
-        return PNGENC_ERROR_INVALID_ARG;
 
     return PNGENC_SUCCESS;
 }
