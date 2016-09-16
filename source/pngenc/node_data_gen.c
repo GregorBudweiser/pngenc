@@ -1,6 +1,7 @@
+#include <malloc.h>
 #include "node_data_gen.h"
 #include "utils.h"
-#include "malloc.h"
+#include "image_descriptor.h"
 
 int64_t write_data_generator(struct _pngenc_node * node, const uint8_t * data,
                              uint32_t size);
@@ -10,8 +11,8 @@ int64_t init_data_generator(struct _pngenc_node * node);
 
 int node_data_generator_init(pngenc_node_data_gen * node,
                                const pngenc_image_desc * image) {
-    node->base.buf = malloc(image->width*image->num_channels);
-    node->base.buf_size = (uint64_t)image->width*(uint64_t)image->num_channels;
+    node->base.buf_size = get_num_bytes_per_row(image);
+    node->base.buf = malloc(node->base.buf_size);
     node->base.buf_pos = 0;
     node->base.init = &init_data_generator;
     node->base.write = &write_data_generator;
@@ -37,7 +38,7 @@ int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
             RETURN_ON_ERROR(node_write(node->base.next,
                                        image->data + y*image->row_stride,
                                        node->base.buf_size));
-        } else {
+        } else if(image->bit_depth == 8) {
             // delta-x row filter
             const uint8_t c = image->num_channels;
             const uint8_t * src = image->data + y*image->row_stride;
@@ -51,12 +52,26 @@ int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
                 dst[i] = src[i] - src[i-c];
 
             RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
-                                       image->width*image->num_channels));
+                                       node->base.buf_size));
+        } else { // 16bit
+            // delta-x row filter
+            const uint64_t c = image->num_channels;
+            const uint16_t * src = (uint16_t*)(image->data + y*image->row_stride);
+            const uint64_t length = node->base.buf_size;
+            uint16_t * dst = (uint16_t*)node->base.buf;
+            uint64_t i;
+            for(i = 0; i < c; i++)
+                dst[i] = src[i];
+
+            for(i = c; i < length; i++)
+                dst[i] = src[i] - src[i-c];
+
+            RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
+                                       node->base.buf_size));
         }
     }
 
-    return (int64_t)image->height *
-           ((int64_t)image->width*(int64_t)image->num_channels + 1L);
+    return (int64_t)image->height * (get_num_bytes_per_row(image) + 1LL);
 }
 
 int64_t finish_data_generator(struct _pngenc_node * node) {

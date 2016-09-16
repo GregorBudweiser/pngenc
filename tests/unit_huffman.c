@@ -1,4 +1,5 @@
 #include <string.h>
+#include <malloc.h>
 #include "common.h"
 #include "../source/pngenc/huffman.h"
 
@@ -7,7 +8,7 @@ int test_huffman_hist() {
     huffman_encoder_init(&encoder);
 
     const int N = 1024;
-    uint8_t buf[N];
+    uint8_t * buf = (uint8_t*)malloc(N);
     memset(buf, 0, N);
     buf[0] = 1;
     buf[10] = 1;
@@ -20,6 +21,7 @@ int test_huffman_hist() {
     for(int i = 2; i < 257; i++) {
         ASSERT_TRUE(encoder.histogram[i] == 0);
     }
+    free(buf);
     return 0;
 }
 

@@ -51,7 +51,7 @@ void huffman_encoder_init(huffman_encoder * encoder) {
 
 int huffman_encoder_add(huffman_encoder * encoder, const uint8_t * symbols,
                         uint32_t length) {
-    __attribute__((aligned(16))) uint16_t counters[4][256];
+    /*__attribute__((aligned(16)))*/ uint16_t counters[4][256];
     memset(counters, 0, 4*256*2);
     uint64_t l8 = length/8;
 
@@ -60,7 +60,7 @@ int huffman_encoder_add(huffman_encoder * encoder, const uint8_t * symbols,
     for(uint64_t start = 0; start < length; start += 0x7FFF)
     {
         uint64_t end = min_u64(l8, start + 0x7FFF);
-        for(int i = start; i < end; i++)
+        for(uint64_t i = start; i < end; i++)
         {
             register uint64_t tmp = data[i];
             counters[0][tmp & 0xFF]++;
@@ -106,7 +106,9 @@ int huffman_encoder_add_single(huffman_encoder * encoder, uint8_t data) {
 int huffman_encoder_build_tree(huffman_encoder * encoder) {
 
     const uint64_t N_SYMBOLS = 257;
-    Symbol symbols[2*N_SYMBOLS-1];
+    // msvc cant do this because it lacks c99 support?
+    //Symbol symbols[2*N_SYMBOLS-1];
+    Symbol symbols[513];
     Symbol * next_free_symbol = symbols;
     uint16_t next_free_symbol_value = 257;
 
@@ -114,10 +116,10 @@ int huffman_encoder_build_tree(huffman_encoder * encoder) {
     memset(symbols, 0, sizeof(Symbol)*(2*N_SYMBOLS-1));
 
     // Push raw symbols
-    uint64_t i = 0;
+    uint32_t i = 0;
     for( ; i < 257; i++) {
         next_free_symbol->probability = encoder->histogram[i];
-        next_free_symbol->symbol = i;
+        next_free_symbol->symbol = (uint16_t)i;
         next_free_symbol->parent = -1;
 
         // ignore symbols that don't appear
@@ -125,7 +127,7 @@ int huffman_encoder_build_tree(huffman_encoder * encoder) {
     }
 
     // number of symbols with non-zero probability
-    const uint16_t num_symbols = next_free_symbol - symbols;
+    const uint16_t num_symbols = (uint16_t)(next_free_symbol - symbols);
 
     // sort by probability
     qsort(symbols, num_symbols, sizeof(Symbol), &compare_by_probability);
@@ -195,9 +197,9 @@ int huffman_encoder_build_tree(huffman_encoder * encoder) {
           &compare_by_symbol);
 
     // compute symbol table first
-    int16_t symbol_table[2*N_SYMBOLS-1]; // symbols[i].symbol != i
+    int16_t symbol_table[513];
     memset(symbol_table, 0, sizeof(int16_t)*(2*N_SYMBOLS-1));
-    int count = next_free_symbol - symbols;
+    uint32_t count = (uint32_t)(next_free_symbol - symbols);
     assert(count <= 2*N_SYMBOLS-1);
     for(i = 0; i < count; i++) {
         symbol_table[symbols[i].symbol] = i;
@@ -227,7 +229,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 
     // Find number of elements per code length
     const uint8_t MAX_BITS = 16;
-    uint8_t num_code_lengths[MAX_BITS];
+    uint8_t num_code_lengths[16]; // for msvc... [MAX_BITS];
     memset(num_code_lengths, 0, sizeof(uint8_t)*MAX_BITS);
 
     uint32_t i;
@@ -238,7 +240,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     }
 
     // Generate base code for each length (see deflate rfc 1951)
-    uint32_t next_code[MAX_BITS];
+    uint32_t next_code[16];
     memset(next_code, 0, sizeof(uint32_t)*MAX_BITS);
     uint32_t code = 0;
     uint32_t bits;
@@ -269,7 +271,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t * offset) {
-    const int padding = 64; // 64 bit / min Symbol size
+    const uint32_t padding = 64; // 64 bit / min Symbol size
     if(length <= padding) {
         return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
     }
