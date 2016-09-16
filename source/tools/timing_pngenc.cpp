@@ -32,6 +32,7 @@ int main() {
     desc.height = H;
     desc.num_channels = C;
     desc.row_stride = W*C;
+    desc.bit_depth = 8;
 
     for(int i = 0; i < 2; i++)
     {
