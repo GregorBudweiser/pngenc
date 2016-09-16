@@ -11,8 +11,16 @@ int integration_save_png16(int argc, char* argv[])
     const int W = 100;
     const int H = 100;
     const int C = 3;
-    uint8_t * buf = (uint8_t*)malloc(C*W*H*2);
+    uint16_t * buf = (uint16_t*)malloc(C*W*H*2);
     memset(buf, 0, C*W*H*2);
+    for(int y = 0; y < H; y++) {
+        for(int x = 0; x < W; x++) {
+            uint16_t val = (x*16 << 8);
+            buf[(y*W+x)*C  ] = val;
+            buf[(y*W+x)*C+1] = val;
+            buf[(y*W+x)*C+2] = val;
+        }
+    }
 
     pngenc_image_desc desc;
     desc.data = (uint8_t*)buf;

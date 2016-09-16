@@ -21,6 +21,10 @@ int node_data_generator_init(pngenc_node_data_gen * node,
     return PNGENC_SUCCESS;
 }
 
+uint16_t swap_uint16(uint16_t val) {
+    return (val << 8) | (val >> 8);
+}
+
 int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
                              uint32_t size) {
     (void)data;
@@ -34,37 +38,45 @@ int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
     uint64_t y;
     for(y = 0; y < image->height; y++) {
         RETURN_ON_ERROR(node_write(node->base.next, &row_filter, 1));
-        if(row_filter == 0) {
-            RETURN_ON_ERROR(node_write(node->base.next,
-                                       image->data + y*image->row_stride,
-                                       node->base.buf_size));
-        } else if(image->bit_depth == 8) {
-            // delta-x row filter
-            const uint8_t c = image->num_channels;
-            const uint8_t * src = image->data + y*image->row_stride;
-            const uint64_t length = node->base.buf_size;
-            uint8_t * dst = (uint8_t*)node->base.buf;
-            uint64_t i;
-            for(i = 0; i < c; i++)
-                dst[i] = src[i];
+        if(image->bit_depth == 8) {
+            if(row_filter == 0) {
+                RETURN_ON_ERROR(node_write(node->base.next,
+                                           image->data + y*image->row_stride,
+                                           node->base.buf_size));
+            } else {
+                // delta-x row filter
+                const uint8_t c = image->num_channels;
+                const uint8_t * src = image->data + y*image->row_stride;
+                const uint64_t length = node->base.buf_size;
+                uint8_t * dst = (uint8_t*)node->base.buf;
+                uint64_t i;
+                for(i = 0; i < c; i++)
+                    dst[i] = src[i];
 
-            for(i = c; i < length; i++)
-                dst[i] = src[i] - src[i-c];
+                for(i = c; i < length; i++)
+                    dst[i] = src[i] - src[i-c];
 
-            RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
-                                       node->base.buf_size));
+                RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
+                                           node->base.buf_size));
+            }
         } else { // 16bit
             // delta-x row filter
             const uint64_t c = image->num_channels;
             const uint16_t * src = (uint16_t*)(image->data + y*image->row_stride);
-            const uint64_t length = node->base.buf_size;
+            const uint64_t length = node->base.buf_size/2;
             uint16_t * dst = (uint16_t*)node->base.buf;
             uint64_t i;
-            for(i = 0; i < c; i++)
-                dst[i] = src[i];
 
-            for(i = c; i < length; i++)
-                dst[i] = src[i] - src[i-c];
+            if(row_filter == 0) {
+                for(i = 0; i < length; i++)
+                    dst[i] = swap_uint16(src[i]);
+            } else {
+                for(i = 0; i < c; i++)
+                    dst[i] = swap_uint16(src[i]);
+
+                for(i = c; i < length; i++)
+                    dst[i] = swap_uint16(src[i] - src[i-c]);
+            }
 
             RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
                                        node->base.buf_size));

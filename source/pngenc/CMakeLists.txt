@@ -30,13 +30,13 @@ endif()
 
 # set flags to activate dllexport on win
 add_library(pngenc SHARED ${pngenc_sources})
+# add libm on gnu/linux
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_link_libraries(pngenc m)
+endif()
 
 add_executable(example "main.c" "pngenc.h")
 target_link_libraries(example pngenc)
-# add libm on gnu/linux
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(example m)
-endif()
 
 # build native lib for java
 if(BUILD_JAVA)
