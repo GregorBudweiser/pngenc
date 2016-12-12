@@ -13,7 +13,7 @@ macro(create_test test_name)
     
     # Create the test scaffold if it does not exist, so after running cmake you have your test.
     if(NOT EXISTS ${test_file_path})
-        set(test_scaffold "#include \"common.h\"\n\nint ${test_name}(int argc, char* argv[])\n{\n    // TODO: Make the test work\n    return -1\;\n}\n\n")
+        set(test_scaffold "#include \"common.h\"\n\nint ${test_name}(int argc, char* argv[]) {\n    // TODO: Make the test work\n    return -1\;\n}\n\n")
         file(WRITE ${test_file_path} ${test_scaffold})
     endif()
     
@@ -29,6 +29,7 @@ endmacro(create_test)
 create_test(unit_adler)
 create_test(unit_huffman)
 create_test(unit_crc)
+create_test(unit_matcher)
 
 # Integration tests
 create_test(integration_save_png)

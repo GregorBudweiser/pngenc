@@ -1,7 +1,6 @@
 #include "common.h"
 
-int unit_crc(int argc, char* argv[])
-{
+int unit_crc(int argc, char* argv[]) {
     (void)argc;
     (void*)argv;
 
