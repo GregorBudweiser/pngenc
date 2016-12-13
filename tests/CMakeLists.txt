@@ -37,6 +37,9 @@ create_test(integration_save_png16)
 
 # Perf tests
 
+# Misc tests
+create_test(misc_matcher)
+
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
                          "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.h")

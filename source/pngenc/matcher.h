@@ -1,8 +1,14 @@
 #include <stdint.h>
 
-typedef struct _range_encoder {
+/**
+ * Hash table entry.
+ * For each hash we are storing the 8 most recent matches.
+ */
+typedef struct _tbl_entry {
+    uint32_t positions[8];
+} tbl_entry;
 
-} range_encoder;
+void update_entry(tbl_entry * entry, uint32_t position);
 
 uint32_t hash_12b(const uint32_t * data);
 
