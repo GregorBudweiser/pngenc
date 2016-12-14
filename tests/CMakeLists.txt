@@ -57,5 +57,7 @@ list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/pn
 #message(STATUS "test-src: ${pngenc_sources}")
 include_directories("../source")
 create_test_sourcelist(test_sources test_driver.c ${gen_test_sources})
-add_executable(${test_prefix} ${test_sources} ${fastpng_sources} ${pngenc_sources} ${system_sources} "${CMAKE_CURRENT_SOURCE_DIR}/common.h")
+add_executable(${test_prefix} ${test_sources} ${fastpng_sources} ${pngenc_sources} ${system_sources}
+    "${CMAKE_CURRENT_SOURCE_DIR}/common.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/common.c")
 target_link_libraries(${test_prefix} pngenc)

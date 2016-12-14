@@ -3,19 +3,27 @@
 #include <math.h>
 #include <malloc.h>
 
-#define MATCH_BUF_SIZE (1024*1024)
-
 int misc_matcher(int argc, char* argv[]) {
 
-    uint8_t * buf = malloc(MATCH_BUF_SIZE);
-    uint32_t i;
-    for(i = 0; i < MATCH_BUF_SIZE; i++) {
-        buf[i] = rand() % 4;
+    (void)argc;
+    (void*)argv;
+
+    const int W = 1920;
+    const int H = 1080;
+    const int C = 3;
+    uint8_t * buf = (uint8_t*)malloc(W*H*C);
+
+    {
+        FILE * f = fopen("data.bin", "rb");
+        fread(buf, C, W*H, f);
+        fclose(f);
     }
 
     uint16_t hist[32768];
     memset(hist, 0, 32768*sizeof(uint16_t));
-    RETURN_ON_ERROR(histogram(buf, MATCH_BUF_SIZE, hist));
+    TIMING_START;
+    RETURN_ON_ERROR(histogram(buf, W*H*C, hist));
+    TIMING_END;
 
     for (int i = 0; i < 100; i++) {
         printf("Match for %d: %d\n", i, (int)hist[i]);

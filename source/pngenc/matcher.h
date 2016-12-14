@@ -4,8 +4,9 @@
  * Hash table entry.
  * For each hash we are storing the 8 most recent matches.
  */
+#define NUM_HASH_ENTRIES 4
 typedef struct _tbl_entry {
-    uint32_t positions[8];
+    uint32_t positions[NUM_HASH_ENTRIES];
 } tbl_entry;
 
 void update_entry(tbl_entry * entry, uint32_t position);
