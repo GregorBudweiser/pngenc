@@ -33,27 +33,65 @@ int test_match_simple() {
     return 0;
 }
 
+int test_encode_tmp_length_code() {
+    uint16_t * out = (uint16_t*)malloc(4*sizeof(uint16_t));
+    uint32_t * hist_sym = (uint32_t*)malloc(285*sizeof(uint32_t));
+    uint32_t * hist_dist = (uint32_t*)malloc(30*sizeof(uint32_t));
+    memset(hist_sym, 0, 285*sizeof(uint32_t));
+    memset(hist_dist, 0, 30*sizeof(uint32_t));
+
+    // shortest matches
+    uint32_t i;
+    for(i = 3; i < 11; i++) {
+        uint32_t pos = encode_match_tmp(out, 0, i, 1, hist_sym, hist_dist);
+        ASSERT_TRUE(out[0] == 257 - 3 + i);
+        ASSERT_TRUE(pos == 2); // length + dist
+    }
+
+    // all matches with dist + extra bits following (+1 temporary symbol)
+    for(i = 11; i < 258; i++) {
+        uint32_t pos = encode_match_tmp(out, 0, i, 1, hist_sym, hist_dist);
+        ASSERT_TRUE(pos == 3); // lenght + extra + dist
+    }
+
+    // 1 extrabit match
+    encode_match_tmp(out, 0, 11, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 265);
+
+    // 2 extrabits match
+    encode_match_tmp(out, 0, 19, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 269);
+
+    // 3 extrabits match
+    encode_match_tmp(out, 0, 35, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 273);
+
+    // 4 extrabits match
+    encode_match_tmp(out, 0, 67, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 277);
+
+    // 5 extrabits match
+    encode_match_tmp(out, 0, 131, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 281);
+
+    // longest match
+    encode_match_tmp(out, 0, 257, 1, hist_sym, hist_dist);
+    ASSERT_TRUE(out[0] == 284);
+
+    free(out);
+    free(hist_sym);
+    free(hist_dist);
+
+    return 0;
+}
+
 int unit_matcher(int argc, char* argv[]) {
     (void)argc;
     (void*)argv;
 
-    /*const uint32_t N = 1024;
-    uint8_t buf[1024];
-    uint32_t hash_table[1 << 12]; // 4k entries * 4 byte = 16kb table
-
-    memset(buf, 0, N);
-
-    uint32_t i;
-    for(i = 0; i < N; i++) {
-        uint32_t h = hash_12b(buf[i]);
-        uint32_t proposed_match_pos = hash_table[h];
-        int match_len = match(buf, proposed_match_pos, i, proposed_match_pos);
-        //encode_symbol(match_len, i);
-        hash_table[h] = i;
-    }*/
     RETURN_ON_ERROR(test_hash());
     RETURN_ON_ERROR(test_match_simple());
-
+    RETURN_ON_ERROR(test_encode_tmp_length_code());
     return 0;
 }
 

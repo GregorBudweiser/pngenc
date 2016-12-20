@@ -34,10 +34,10 @@ uint32_t match_fwd(const uint8_t * buf, uint32_t max_match_length,
 }
 
 uint32_t histogram(const uint8_t * buf, uint32_t length,
-                   uint16_t * symbol_histogram, uint16_t * out_buf,
-                   uint32_t * out_length) {
+                   uint32_t * symbol_histogram, uint32_t *dist_histogram,
+                   uint16_t * out_buf, uint32_t * out_length) {
     // Deflate's maximum match
-    const uint32_t max_match_length = 60; //257;
+    const uint32_t max_match_length = 257; //257;
 
     tbl_entry hash_table[1 << 12];
     memset(hash_table, 0, (1 << 12)*sizeof(tbl_entry));
@@ -70,13 +70,14 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
 
         // Update stuff according to best entry
         update_entry(hash_table + hash, i);
-        symbol_histogram[best_length]++;
 
         // Temporary output
         if (best_length > 2) {
-            out_i = encode_match_tmp(out_buf, out_i, best_length, i - best_pos);
+            out_i = encode_match_tmp(out_buf, out_i, best_length, i - best_pos,
+                                     symbol_histogram, dist_histogram);
         } else {
             out_i++;
+            symbol_histogram[buf[i]]++;
         }
 
         // Increment counters
@@ -137,7 +138,9 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
  *
  */
 uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
-                          uint32_t match_length, uint32_t bwd_dist) {
+                          uint32_t match_length, uint32_t bwd_dist,
+                          uint32_t * symbol_histogram,
+                          uint32_t * dist_histogram) {
 
     // Encode length
     {
@@ -148,9 +151,11 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
 #else
         extra_bits = 31 - __builtin_clz(match_length | 1);
 #endif
-        extra_bits = max_u32(extra_bits-3, 0);
-        out[out_i] = 257 + (extra_bits << 2) + (match_length >> extra_bits);
+        extra_bits = max_i32(extra_bits-2, 0);
+        uint32_t length_code = 257 + (extra_bits << 2) + (match_length >> extra_bits);
+        out[out_i] = length_code;
         out_i++;
+        symbol_histogram[length_code]++;
 
         // The part that is dropped during the shifting for code generation
         // contains the "extra bits". We mask them and store them to the next
@@ -169,8 +174,10 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
 #else
         extra_bits = 31 - __builtin_clz(bwd_dist | 1);
 #endif
-        extra_bits = max_u32(extra_bits-2, 0);
-        out[out_i] = 257 + (extra_bits << 1) + (match_length >> extra_bits);
+        extra_bits = max_i32(extra_bits-1, 0);
+        uint32_t dist_code = (extra_bits << 1) + (bwd_dist >> extra_bits);
+        out[out_i] = dist_code;
+        dist_histogram[dist_code]++;
         out_i++;
 
         // The part that is dropped during the shifting for code generation

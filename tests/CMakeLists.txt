@@ -1,8 +1,8 @@
 #testing stuff
 enable_testing()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
 endif()
 
 # Replace with what you want

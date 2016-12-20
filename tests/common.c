@@ -39,10 +39,4 @@ double get_time_passed_ms(time_type prev) {
 
     return (double)deltaTimeNano*1E-6 + (double)deltaTimeSecs*1E3;
 }
-
-double Timer::getResolutionNS() const {
-    struct timespec res;
-    clock_getres(CLOCK_MONOTONIC, &res);
-    return double(res.tv_nsec) + double(res.tv_sec)*1E9;
-}
 #endif
