@@ -1,10 +1,12 @@
 #pragma once
 #include <stdint.h>
 
+#define HUFF_MAX_SIZE 285
+
 typedef struct _huffman_encoder {
-    uint32_t histogram[257];
-    uint16_t symbols[257];     // max. 15 bit to represent value
-    uint8_t code_lengths[257]; // max.  4 bit to represent length
+    uint32_t histogram[HUFF_MAX_SIZE];
+    uint16_t symbols[HUFF_MAX_SIZE];     // max. 15 bit to represent value
+    uint8_t code_lengths[HUFF_MAX_SIZE]; // max.  4 bit to represent length
 } huffman_encoder;
 
 
@@ -20,5 +22,8 @@ int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
 int huffman_encoder_encode_simple(const huffman_encoder * encoder,
                                   const uint8_t * src, uint32_t length,
                                   uint8_t * dst, uint64_t * offset);
+int huffman_encoder_encode_full_simple(const huffman_encoder * encoder,
+                                       const uint16_t *src, uint32_t length,
+                                       uint8_t * dst, uint64_t * offset);
 int huffman_encoder_get_max_length(const huffman_encoder * encoder);
 int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder);

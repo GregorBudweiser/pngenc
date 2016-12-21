@@ -105,19 +105,19 @@ int huffman_encoder_add_single(huffman_encoder * encoder, uint8_t data) {
 
 int huffman_encoder_build_tree(huffman_encoder * encoder) {
 
-    const uint64_t N_SYMBOLS = 257;
+    //const uint64_t N_SYMBOLS = HUFF_MAX_SIZE;
     // msvc cant do this because it lacks c99 support?
     //Symbol symbols[2*N_SYMBOLS-1];
-    Symbol symbols[513];
+    Symbol symbols[2*HUFF_MAX_SIZE-1];
     Symbol * next_free_symbol = symbols;
-    uint16_t next_free_symbol_value = 257;
+    uint16_t next_free_symbol_value = HUFF_MAX_SIZE;
 
     // TODO: remove
-    memset(symbols, 0, sizeof(Symbol)*(2*N_SYMBOLS-1));
+    memset(symbols, 0, sizeof(Symbol)*(2*HUFF_MAX_SIZE-1));
 
     // Push raw symbols
     uint32_t i = 0;
-    for( ; i < 257; i++) {
+    for( ; i < HUFF_MAX_SIZE; i++) {
         next_free_symbol->probability = encoder->histogram[i];
         next_free_symbol->symbol = (uint16_t)i;
         next_free_symbol->parent = -1;
@@ -197,16 +197,16 @@ int huffman_encoder_build_tree(huffman_encoder * encoder) {
           &compare_by_symbol);
 
     // compute symbol table first
-    int16_t symbol_table[513];
-    memset(symbol_table, 0, sizeof(int16_t)*(2*N_SYMBOLS-1));
+    int16_t symbol_table[2*HUFF_MAX_SIZE-1];
+    memset(symbol_table, 0, sizeof(int16_t)*(2*HUFF_MAX_SIZE-1));
     uint32_t count = (uint32_t)(next_free_symbol - symbols);
-    assert(count <= 2*N_SYMBOLS-1);
+    assert(count <= 2*HUFF_MAX_SIZE-1);
     for(i = 0; i < count; i++) {
         symbol_table[symbols[i].symbol] = i;
     }
 
     // Get actual lengths
-    assert(num_symbols <= 257);
+    assert(num_symbols <= HUFF_MAX_SIZE);
     for(i = 0; i < num_symbols; i++) {
         uint8_t length = 0;
         Symbol * current_symbol = symbols + i;
@@ -326,9 +326,37 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
+
+
+int huffman_encoder_encode_full_simple(const huffman_encoder * encoder,
+                                       const uint16_t * src, uint32_t length,
+                                       uint8_t * dst, uint64_t * offset) {
+    uint64_t positionInBits = *offset;
+    size_t i = 0;
+    for(; i < length; i++) {
+        uint16_t current_byte = src[i];
+        uint16_t symbol = encoder->symbols[current_byte];
+        *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+                                                << (positionInBits & 0x7);
+        positionInBits += encoder->code_lengths[src[i]];
+
+        if(current_byte > 255) { // literal was a length code
+            i++;
+            uint16_t length_code = src[i];
+            // TODO: add distance codes as seperate parameter (another encoder)..
+            // TODO: add create_dynamic_huffman_header_full() to node_defalte.c
+        }
+    }
+
+    *offset = positionInBits;
+
+    return PNGENC_SUCCESS;
+}
+
+
 int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;
-    for(int i = 0; i < 257; i++) {
+    for(int i = 0; i < HUFF_MAX_SIZE; i++) {
         max_value = max_u32(max_value, encoder->code_lengths[i]);
     }
     return max_value;

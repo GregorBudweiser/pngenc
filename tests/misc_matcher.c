@@ -1,5 +1,6 @@
 #include "common.h"
 #include "../source/pngenc/matcher.h"
+#include "../source/pngenc/huffman.h"
 #include <math.h>
 #include <malloc.h>
 #include <string.h>
@@ -15,23 +16,42 @@ int misc_matcher(int argc, char* argv[]) {
     uint8_t * buf = (uint8_t*)malloc(W*H*C);
     {
         FILE * f = fopen("data.bin", "rb");
+        if(f == 0)
+            return 0;
         fread(buf, C, W*H, f);
         fclose(f);
     }
 
     uint16_t * out = (uint16_t*)malloc(W*H*C*sizeof(uint16_t));
-    uint32_t * hist = (uint32_t*)malloc(285*sizeof(uint32_t));
-    uint32_t * dist_hist = (uint32_t*)malloc(30*sizeof(uint32_t));
-    memset(hist, 0, 285*sizeof(uint32_t));
-    memset(dist_hist, 0, 30*sizeof(uint32_t));
 
+    huffman_encoder encoder_hist;
+    huffman_encoder encoder_dist;
+    huffman_encoder_init(&encoder_hist);
+    huffman_encoder_init(&encoder_dist);
 
     uint32_t out_length = 0;
-    TIMING_START;
-    RETURN_ON_ERROR(histogram(buf, W*H*C, hist, dist_hist, out, &out_length));
-    TIMING_END;
+    {
+        TIMING_START;
+        RETURN_ON_ERROR(histogram(buf, W*H*C, encoder_hist.histogram,
+                                  encoder_dist.histogram, out, &out_length));
+        TIMING_END;
+    }
 
-    printf("out_length: %d/%d => %.02f%%\n", (int)out_length, C*W*H, 100.0f*(float)out_length/(float)(C*W*H));
+    {
+        TIMING_START;
+        RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_hist));
+        TIMING_END;
+    }
+
+    {
+        TIMING_START;
+        RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_dist));
+        TIMING_END;
+    }
+
+
+    printf("out_length: %d/%d => %.02f%%\n",
+           (int)out_length, C*W*H, 100.0f*(float)out_length/(float)(C*W*H));
 
     free(out);
     free(buf);
