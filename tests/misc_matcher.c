@@ -49,6 +49,14 @@ int misc_matcher(int argc, char* argv[]) {
         TIMING_END;
     }
 
+    {
+        uint64_t offset = 0;
+        TIMING_START;
+        RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder_hist, &encoder_dist, out, out_length, buf, &offset));
+        TIMING_END;
+        printf("Out length: %d\n", (int)offset/8);
+    }
+
 
     printf("out_length: %d/%d => %.02f%%\n",
            (int)out_length, C*W*H, 100.0f*(float)out_length/(float)(C*W*H));

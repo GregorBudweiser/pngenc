@@ -22,7 +22,8 @@ int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
 int huffman_encoder_encode_simple(const huffman_encoder * encoder,
                                   const uint8_t * src, uint32_t length,
                                   uint8_t * dst, uint64_t * offset);
-int huffman_encoder_encode_full_simple(const huffman_encoder * encoder,
+int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
+                                       const huffman_encoder * encoder_dist,
                                        const uint16_t *src, uint32_t length,
                                        uint8_t * dst, uint64_t * offset);
 int huffman_encoder_get_max_length(const huffman_encoder * encoder);

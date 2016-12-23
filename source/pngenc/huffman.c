@@ -328,23 +328,56 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
 
 
 
-int huffman_encoder_encode_full_simple(const huffman_encoder * encoder,
+int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
+                                       const huffman_encoder * encoder_dist,
                                        const uint16_t * src, uint32_t length,
                                        uint8_t * dst, uint64_t * offset) {
     uint64_t positionInBits = *offset;
     size_t i = 0;
     for(; i < length; i++) {
         uint16_t current_byte = src[i];
-        uint16_t symbol = encoder->symbols[current_byte];
-        *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
-                                                << (positionInBits & 0x7);
-        positionInBits += encoder->code_lengths[src[i]];
+        // Handle literals (and literal part of matches)
+        {
+            uint16_t symbol = encoder_hist->symbols[current_byte];
+            *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+                                                    << (positionInBits & 0x7);
+            positionInBits += encoder_hist->code_lengths[src[i]];
+        }
 
+        // Handle matches
         if(current_byte > 255) { // literal was a length code
-            i++;
-            uint16_t length_code = src[i];
-            // TODO: add distance codes as seperate parameter (another encoder)..
-            // TODO: add create_dynamic_huffman_header_full() to node_defalte.c
+            // Handle extra bits of length code
+            if(current_byte > 264) {
+                i++;
+                uint16_t length_extra_bits = src[i];
+                uint16_t num_extra_bits = length_extra_bits >> 8;
+                uint16_t symbol = length_extra_bits & 0xFF;
+                *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+                                                        << (positionInBits & 0x7);
+                positionInBits += num_extra_bits;
+            }
+
+            // handle distance code
+            {
+                i++;
+                uint16_t dist_code = src[i];
+                uint16_t symbol = encoder_dist->symbols[dist_code];
+                *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+                                                        << (positionInBits & 0x7);
+                positionInBits += encoder_dist->code_lengths[src[i]];
+
+                // Handle extra bits of distance code
+                if(dist_code > 3) {
+                    i++;
+                    const uint32_t mask = (0x1 << 13) - 1;
+                    uint16_t dist_extra_bits = src[i];
+                    uint16_t num_extra_bits = dist_extra_bits >> 13;
+                    uint16_t symbol = dist_extra_bits & mask;
+                    *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+                                                            << (positionInBits & 0x7);
+                    positionInBits += num_extra_bits;
+                }
+            }
         }
     }
 
