@@ -15,8 +15,9 @@
 #define PNGENC_VERSION_MINOR 1
 
 typedef enum _pngenc_compression_strategy {
-    PNGENC_NO_COMPRESSION,                   // fastest, no compression
-    PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1 // reasonably balanced
+    PNGENC_NO_COMPRESSION,                    // fastest, no compression
+    PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1, // reasonably balanced
+    PNGENC_FULL_COMPRESSION                   // reasonably compressed
 } pngenc_compression_strategy;
 
 typedef enum _pngenc_result {

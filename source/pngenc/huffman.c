@@ -103,6 +103,23 @@ int huffman_encoder_add_single(huffman_encoder * encoder, uint8_t data) {
     return huffman_encoder_add(encoder, &data, 1);
 }
 
+int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
+                                       uint8_t limit) {
+    // TODO: Compute optimal tree (e.g. use optimal algorithm)
+    RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
+    while(huffman_encoder_get_max_length(encoder) > limit) {
+        for(int i = 0; i < 257; i++) {
+            if(encoder->histogram[i]) {
+                // nonlinearly reduce weight of nodes to lower max tree depth
+                uint32_t reduced = (uint32_t)pow(encoder->histogram[i], 0.8);
+                encoder->histogram[i] = max_u32(1, reduced);
+            }
+        }
+        RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
+    }
+    return PNGENC_SUCCESS;
+}
+
 int huffman_encoder_build_tree(huffman_encoder * encoder) {
 
     //const uint64_t N_SYMBOLS = HUFF_MAX_SIZE;
@@ -326,8 +343,6 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
-
-
 int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                                        const huffman_encoder * encoder_dist,
                                        const uint16_t * src, uint32_t length,
@@ -385,7 +400,6 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
 
     return PNGENC_SUCCESS;
 }
-
 
 int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;

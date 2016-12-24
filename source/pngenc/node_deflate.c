@@ -16,10 +16,24 @@ int64_t finish_deflate_uncompressed(struct _pngenc_node * node);
 int64_t finish_deflate_compressed(struct _pngenc_node * node);
 int64_t init_deflate(struct _pngenc_node * node);
 
+/**
+ * Creates the deflate stream for the given node.
+ */
 int64_t deflate_encode(pngenc_node_deflate * node, uint8_t last_block);
+
+/**
+ * Creates a deflate header with dynamic huffman encoding.
+ * This is the "huffman only" version. No length/distance codes are handled.
+ *
+ * @see dynamic_huffman_header_full()
+ */
 int64_t dynamic_huffman_header(pngenc_node_deflate * node,
                                huffman_encoder * encoder,
                                uint64_t *bit_offset);
+
+int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
+                                    huffman_encoder * encoder,
+                                    uint64_t *bit_offset);
 
 
 int node_deflate_init(pngenc_node_deflate * node,
@@ -227,18 +241,8 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
                                         (uint32_t)node->base.buf_pos));
     encoder->histogram[256] = 1; // terminator
 
-    // codes limited to 15 bits
-    // TODO: Compute optimal tree
-    do {
-        RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
-        for(int i = 0; i < 257; i++) {
-            if(encoder->histogram[i]) {
-                // nonlearly reduce weight of nodes to lower max tree depth
-                uint32_t reduced = (uint32_t)pow(encoder->histogram[i], 0.8);
-                encoder->histogram[i] = max_u32(1, reduced);
-            }
-        }
-    } while(huffman_encoder_get_max_length(encoder) > 15);
+    // in deflate the huffman codes are limited to 15 bits
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
 
     huffman_encoder code_length_encoder;
@@ -248,20 +252,8 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
     code_length_encoder.histogram[0]++;
 
     // code length codes limited to 7 bits
-    // TODO: Compute optimal tree
-    do {
-        RETURN_ON_ERROR(huffman_encoder_build_tree(&code_length_encoder));
-        for(int i = 0; i < 257; i++) {
-            if(code_length_encoder.histogram[i]) {
-                // nonlearly reduce weight of nodes to lower max tree depth
-                uint32_t reduced =
-                        (uint32_t)pow(code_length_encoder.histogram[i], 0.8);
-                code_length_encoder.histogram[i] = max_u32(1, reduced);
-            }
-        }
-    } while(huffman_encoder_get_max_length(&code_length_encoder) > 7);
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(
-                        &code_length_encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
 
     /*
      * From the RFC:
@@ -269,6 +261,121 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
      * We can now define the format of the block:
      *
      *               5 Bits: HLIT, # of Literal/Length codes - 257 (257 - 286)
+     *               5 Bits: HDIST, # of Distance codes - 1        (1 - 32)
+     *               4 Bits: HCLEN, # of Code Length codes - 4     (4 - 19)
+     */
+    // 256 literals + 1 termination symbol
+    const uint8_t HLIT = 0;
+    // 1 distance code; set it to 0 to signal that we only use literals
+    const uint8_t HDIST = 0;
+    // 19 code lengths of the actual code lengths (SEE RFC1951)
+    const uint8_t HCLEN = 0xF;
+
+    uint8_t * data = node->compressed_buf;
+    push_bits(HLIT,  5, data, bit_offset);
+    push_bits(HDIST, 5, data, bit_offset);
+    push_bits(HCLEN, 4, data, bit_offset);
+
+    /*
+     *       (HCLEN + 4) x 3 bits: code lengths for the code length
+     *           alphabet given just above, in the order: 16, 17, 18,
+     *           0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+     *
+     *           These code lengths are interpreted as 3-bit integers
+     *           (0-7); as above, a code length of 0 means the
+     *           corresponding symbol (literal/length or distance code
+     *           length) is not used.
+     */
+    push_bits(0, 3, data, bit_offset); // no length codes
+    push_bits(0, 3, data, bit_offset);
+    push_bits(0, 3, data, bit_offset);
+
+    push_bits(code_length_encoder.code_lengths[ 0], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 8], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 7], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 9], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 6], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[10], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 5], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[11], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 4], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[12], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 3], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[13], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 2], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[14], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[ 1], 3, data, bit_offset);
+    push_bits(code_length_encoder.code_lengths[15], 3, data, bit_offset);
+
+    /*
+     *        HLIT + 257 code lengths for the literal/length alphabet,
+     *           encoded using the code length Huffman code
+     */
+    uint32_t i;
+    for(i = 0; i < 257; i++) {
+        push_bits(code_length_encoder.symbols[encoder->code_lengths[i]],
+                  code_length_encoder.code_lengths[encoder->code_lengths[i]],
+                  data, bit_offset);
+    }
+
+    /*
+     *        HDIST + 1 code lengths for the distance alphabet,
+     *           encoded using the code length Huffman code
+     */
+    push_bits(code_length_encoder.symbols[0],
+              code_length_encoder.code_lengths[0], data, bit_offset);
+
+    /*
+     *        The actual compressed data of the block,
+     *           encoded using the literal/length and distance Huffman
+     *           codes
+     *
+     *        The literal/length symbol 256 (end of data),
+     *           encoded using the literal/length Huffman code
+     *
+     *  The code length repeat codes can cross from HLIT + 257 to the
+     *  HDIST + 1 code lengths.  In other words, all code lengths form
+     *  a single sequence of HLIT + HDIST + 258 values.
+     */
+    RETURN_ON_ERROR(huffman_encoder_encode(encoder, node->base.buf,
+                                           (uint32_t)node->base.buf_pos, data,
+                                           bit_offset));
+    push_bits(encoder->symbols[256], encoder->code_lengths[256],
+              data, bit_offset);
+
+    return ((*bit_offset)+7)/8;
+}
+
+int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
+                                    huffman_encoder * encoder,
+                                    uint64_t * bit_offset) {
+    RETURN_ON_ERROR(huffman_encoder_add(encoder, node->base.buf,
+                                        (uint32_t)node->base.buf_pos));
+    encoder->histogram[256] = 1; // terminator
+
+    // in deflate the huffman codes are limited to 15 bits
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+
+    huffman_encoder code_length_encoder;
+    huffman_encoder_init(&code_length_encoder);
+    huffman_encoder_add(&code_length_encoder, encoder->code_lengths, 257);
+    // we need to write the zero length for the distance code
+    code_length_encoder.histogram[0]++;
+
+    // TODO: Pass code length encoder as parameter (inited with distance)
+    //       Then add code lengths to this histogram
+    //       Then encode distances too
+    // code length codes limited to 7 bits
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
+
+    /*
+     * From the RFC:
+     *
+     * We can now define the format of the block:
+     *
+     *               5 Bits: HLIT,  # of Literal/Length codes - 257 (257 - 286)
      *               5 Bits: HDIST, # of Distance codes - 1        (1 - 32)
      *               4 Bits: HCLEN, # of Code Length codes - 4     (4 - 19)
      */

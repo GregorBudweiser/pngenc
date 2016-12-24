@@ -39,13 +39,13 @@ int misc_matcher(int argc, char* argv[]) {
 
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_hist));
+        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15));
         TIMING_END;
     }
 
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_dist));
+        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_dist, 15));
         TIMING_END;
     }
 
