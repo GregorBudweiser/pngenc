@@ -39,9 +39,10 @@ create_test(unit_matcher)
 create_test(integration_save_png)
 create_test(integration_save_png16)
 
-# Perf tests
+# Performance tests
+create_test(perf_huffman)
 
-# Misc tests
+# Miscellaneous tests
 create_test(misc_matcher)
 
 # CTEST stuff

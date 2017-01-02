@@ -25,7 +25,7 @@ int test_adler_single_call() {
 
     // Compute adler crc for wikipedia
     const char buf[9] = { 'W', 'i', 'k', 'i', 'p', 'e', 'd', 'i', 'a' };
-    adler_update(&adler, buf, 9);
+    adler_update(&adler, (const uint8_t*)buf, 9);
 
     // See: https://en.wikipedia.org/wiki/Adler-32#Example
     ASSERT_TRUE(adler.s1 == 920);
@@ -39,8 +39,8 @@ int test_adler_multi_call() {
 
     // Compute adler crc for wikipedia
     const char buf[9] = { 'W', 'i', 'k', 'i', 'p', 'e', 'd', 'i', 'a' };
-    adler_update(&adler, buf, 4);
-    adler_update(&adler, buf+4, 5);
+    adler_update(&adler, (const uint8_t*)buf, 4);
+    adler_update(&adler, (const uint8_t*)buf+4, 5);
 
     // See: https://en.wikipedia.org/wiki/Adler-32#Example
     ASSERT_TRUE(adler.s1 == 920);
@@ -54,7 +54,7 @@ int test_adler_1M_buffer() {
 
     // 1M buffer
     const int N = 1024*1024;
-    char * buf = (char*)malloc(N);
+    uint8_t * buf = (uint8_t*)malloc(N);
     memset(buf, 0, N);
     adler_update(&adler, buf, N);
 

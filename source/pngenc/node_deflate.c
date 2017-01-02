@@ -237,7 +237,7 @@ int64_t init_deflate(struct _pngenc_node * node) {
 int64_t dynamic_huffman_header(pngenc_node_deflate * node,
                                huffman_encoder * encoder,
                                uint64_t * bit_offset) {
-    RETURN_ON_ERROR(huffman_encoder_add(encoder, node->base.buf,
+    RETURN_ON_ERROR(huffman_encoder_add(encoder->histogram, node->base.buf,
                                         (uint32_t)node->base.buf_pos));
     encoder->histogram[256] = 1; // terminator
 
@@ -247,7 +247,8 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
 
     huffman_encoder code_length_encoder;
     huffman_encoder_init(&code_length_encoder);
-    huffman_encoder_add(&code_length_encoder, encoder->code_lengths, 257);
+    huffman_encoder_add(code_length_encoder.histogram,
+                        encoder->code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
@@ -349,7 +350,7 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
 int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
                                     huffman_encoder * encoder,
                                     uint64_t * bit_offset) {
-    RETURN_ON_ERROR(huffman_encoder_add(encoder, node->base.buf,
+    RETURN_ON_ERROR(huffman_encoder_add(encoder->histogram, node->base.buf,
                                         (uint32_t)node->base.buf_pos));
     encoder->histogram[256] = 1; // terminator
 
@@ -359,7 +360,8 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
 
     huffman_encoder code_length_encoder;
     huffman_encoder_init(&code_length_encoder);
-    huffman_encoder_add(&code_length_encoder, encoder->code_lengths, 257);
+    huffman_encoder_add(code_length_encoder.histogram,
+                        encoder->code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 

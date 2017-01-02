@@ -1,7 +1,8 @@
 #include "huffman.h"
-#include <string.h>
-#include "pngenc.h"
 #include "utils.h"
+#include "pngenc.h"
+#include <string.h>
+#include <math.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -49,19 +50,19 @@ void huffman_encoder_init(huffman_encoder * encoder) {
     memset(encoder, 0, sizeof(huffman_encoder));
 }
 
-int huffman_encoder_add(huffman_encoder * encoder, const uint8_t * symbols,
+int huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
                         uint32_t length) {
-    /*__attribute__((aligned(16)))*/ uint16_t counters[4][256];
+    /*__attribute__((aligned(16)))*/
+    uint16_t counters[4][256];
     memset(counters, 0, 4*256*2);
     uint64_t l8 = length/8;
 
     const uint64_t * data = (const uint64_t*)symbols;
 
-    for(uint64_t start = 0; start < length; start += 0x7FFF)
-    {
+    // Each sub-histogram gets updated twice -> 2*0x7FFF = UINT16_MAX
+    for(uint64_t start = 0; start < length; start += 0x7FFF) {
         uint64_t end = min_u64(l8, start + 0x7FFF);
-        for(uint64_t i = start; i < end; i++)
-        {
+        for(uint64_t i = start; i < end; i++) {
             register uint64_t tmp = data[i];
             counters[0][tmp & 0xFF]++;
             counters[1][(tmp >>  8) & 0xFF]++;
@@ -73,34 +74,28 @@ int huffman_encoder_add(huffman_encoder * encoder, const uint8_t * symbols,
             counters[3][(tmp >> 56)]++;
         }
 
-        for(int i = 0; i < 256; i++)
-        {
-            encoder->histogram[i] += counters[0][i] + counters[1][i]
-                                   + counters[2][i] + counters[3][i];
+        for(int i = 0; i < 256; i++) {
+            histogram[i] += counters[0][i] + counters[1][i]
+                          + counters[2][i] + counters[3][i];
         }
         memset(counters, 0, 4*256*2);
     }
 
     // Unpadded trailing bytes..
-    for(uint64_t i = l8*8; i < length; i++)
-    {
-        encoder->histogram[symbols[i]]++;
+    for(uint64_t i = l8*8; i < length; i++) {
+        histogram[symbols[i]]++;
     }
 
     return PNGENC_SUCCESS;
 }
 
-int huffman_encoder_add_simple(huffman_encoder * encoder, const uint8_t * data,
+int huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
                                uint32_t length) {
     uint32_t i = 0;
     for(; i < length; i++) {
-        encoder->histogram[data[i]]++;
+        histogram[data[i]]++;
     }
     return PNGENC_SUCCESS;
-}
-
-int huffman_encoder_add_single(huffman_encoder * encoder, uint8_t data) {
-    return huffman_encoder_add(encoder, &data, 1);
 }
 
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
