@@ -53,7 +53,7 @@
 static uint32_t crc32c_table[8][256];
 
 /* Construct table for software CRC-32C calculation. */
-void crc32c_init_sw(void) {
+void crc32c_init_sw() {
     uint32_t n, crc, k;
 
     for (n = 0; n < 256; n++) {

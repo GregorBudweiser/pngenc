@@ -7,8 +7,8 @@
 
 int misc_matcher(int argc, char* argv[]) {
 
-    (void)argc;
-    (void*)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     const int W = 1920;
     const int H = 1080;

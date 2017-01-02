@@ -1,6 +1,7 @@
 #pragma once
 #include <stdio.h>
 #include <time.h>
+#include <malloc.h>
 #include "../source/pngenc/utils.h"
 
 #define ASSERT_TRUE(expr) \

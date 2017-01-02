@@ -3,8 +3,8 @@
 #include "../source/pngenc/huffman.h"
 
 int perf_huffman(int argc, char* argv[]) {
-    (void)argc;
-    (void*)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     const int W = 1920;
     const int H = 1080;
@@ -24,13 +24,13 @@ int perf_huffman(int argc, char* argv[]) {
     int i;
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add(&encoder_hist, buf, C*W*H));
+        RETURN_ON_ERROR(huffman_encoder_add(encoder_hist.histogram, buf, C*W*H));
         TIMING_END;
     }
 
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add_simple(&encoder_hist, buf, C*W*H));
+        RETURN_ON_ERROR(huffman_encoder_add_simple(encoder_hist.histogram, buf, C*W*H));
         TIMING_END;
     }
 

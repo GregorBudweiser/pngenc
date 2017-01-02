@@ -1,6 +1,7 @@
 #include "common.h"
 #include "../source/pngenc/matcher.h"
 #include <string.h>
+#include <malloc.h>
 
 int test_hash() {
     const int N = 10;
@@ -12,7 +13,7 @@ int test_hash() {
 
     // Hash function should differ in such simple cases
     for(i = 0; i < N-1; i++) {
-        ASSERT_TRUE(hash_12b(buf+i) != hash_12b(buf+i+1));
+        ASSERT_TRUE(hash_12b((const uint32_t*)(buf+i)) != hash_12b((const uint32_t*)(buf+i+1)));
     }
     return 0;
 }
@@ -86,8 +87,8 @@ int test_encode_tmp_length_code() {
 }
 
 int unit_matcher(int argc, char* argv[]) {
-    (void)argc;
-    (void*)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     RETURN_ON_ERROR(test_hash());
     RETURN_ON_ERROR(test_match_simple());

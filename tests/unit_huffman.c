@@ -14,7 +14,7 @@ int test_huffman_hist() {
     buf[10] = 1;
     buf[100] = 1;
 
-    huffman_encoder_add(&encoder, buf, N);
+    huffman_encoder_add(encoder.histogram, buf, N);
 
     ASSERT_TRUE(encoder.histogram[0] == N - 3);
     ASSERT_TRUE(encoder.histogram[1] == 3);
@@ -27,8 +27,8 @@ int test_huffman_hist() {
 
 int unit_huffman(int argc, char* argv[])
 {
-    (void)argc;
-    (void*)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     RETURN_ON_ERROR(test_huffman_hist());
     // TODO: Handle all the other stuff..

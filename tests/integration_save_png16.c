@@ -5,8 +5,8 @@
 
 int integration_save_png16(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     const int W = 100;
     const int H = 100;

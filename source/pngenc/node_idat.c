@@ -102,6 +102,6 @@ int64_t finish_idat(struct _pngenc_node * n) {
 }
 
 int64_t init_idat(struct _pngenc_node * node) {
-    (void)node;
+    UNUSED(node);
     return PNGENC_SUCCESS;
 }

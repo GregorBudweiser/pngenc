@@ -5,7 +5,7 @@ uint64_t min_u64(uint64_t a, uint64_t b) {
     return a < b ? a : b;
 }
 
-uint64_t min_i64(int64_t a, int64_t b) {
+int64_t min_i64(int64_t a, int64_t b) {
     return a < b ? a : b;
 }
 

@@ -68,8 +68,8 @@ int test_adler_1M_buffer() {
 
 int unit_adler(int argc, char* argv[])
 {
-    (void)argc;
-    (void*)argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     RETURN_ON_ERROR(test_init());
     RETURN_ON_ERROR(test_get());

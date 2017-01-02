@@ -27,8 +27,8 @@ uint16_t swap_uint16(uint16_t val) {
 
 int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
                              uint32_t size) {
-    (void)data;
-    (void)size;
+    UNUSED(data);
+    UNUSED(size);
 
     pngenc_node_data_gen * node = (pngenc_node_data_gen*)n;
 
