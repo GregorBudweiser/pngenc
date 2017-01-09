@@ -1,6 +1,7 @@
 #include "matcher.h"
 #include "utils.h"
 #include <string.h>
+#include <assert.h>
 
 int offset = 0;
 
@@ -52,7 +53,7 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
         // Try all entries for the current hash
         for(j = 0; j < NUM_HASH_ENTRIES; j++) {
             uint32_t proposed_pos = hash_table[hash].positions[j];
-            if (i - proposed_pos > 32000)
+            if (i - proposed_pos - 1 > 32000) // -1 to fix case where i == proposed_pos
                 continue;
 
             uint32_t match_length = match_fwd(buf, max_match_length,
@@ -177,6 +178,7 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
         extra_bits = max_i32(extra_bits-1, 0);
         uint32_t dist_code = (extra_bits << 1) + (bwd_dist >> extra_bits);
         out[out_i] = dist_code;
+        assert(dist_code < 32);
         dist_histogram[dist_code]++;
         out_i++;
 

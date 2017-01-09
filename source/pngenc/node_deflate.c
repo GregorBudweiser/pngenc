@@ -355,27 +355,34 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
 
 int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
                                     uint64_t * bit_offset) {
-    huffman_encoder encoder;
-    huffman_encoder code_length_encoder;
+    huffman_encoder encoder; // literal alphabet
+    huffman_encoder distance_encoder; // distance codes
+    huffman_encoder code_length_encoder; // code lengths
     huffman_encoder_init(&encoder);
+    huffman_encoder_init(&distance_encoder);
     huffman_encoder_init(&code_length_encoder);
 
     // TODO: put in node
     uint16_t * out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
     memset(out, 0, sizeof(uint16_t)*node->base.buf_pos);
-    uint64_t out_length = 0;
+    uint32_t out_length;
 
     // histogramming + matching
-    histogram(node->base.buf, node->base.buf_pos, encoder.histogram, code_length_encoder.histogram, out, &out_length);
+    histogram(node->base.buf, node->base.buf_pos, encoder.histogram,
+              distance_encoder.histogram, out, &out_length);
     encoder.histogram[256] = 1; // terminator
 
     // in deflate the huffman codes are limited to 15 bits
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&distance_encoder, 15));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&distance_encoder));
 
-    // add code lengths to histogram initalized with distance codes already
+    // add code lengths of literals and distances to code-length histogram
     huffman_encoder_add(code_length_encoder.histogram,
                         encoder.code_lengths, 257);
+    huffman_encoder_add(code_length_encoder.histogram,
+                        distance_encoder.code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
@@ -452,9 +459,10 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *        HDIST + 1 code lengths for the distance alphabet,
      *           encoded using the code length Huffman code
      */
-    for(i = 0; i < HDIST; i++) {
-        push_bits(code_length_encoder.symbols[i],
-                  code_length_encoder.code_lengths[i], data, bit_offset);
+    for(i = 0; i < HDIST+1; i++) {
+        push_bits(code_length_encoder.symbols[distance_encoder.code_lengths[i]],
+                  code_length_encoder.code_lengths[distance_encoder.code_lengths[i]],
+                  data, bit_offset);
     }
 
     /*
@@ -475,8 +483,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
                                                        data, bit_offset));
 
     printf("Data to compress: %dkB\n", (int)(node->base.buf_pos/1000));
-    printf("Compressed to: %dkB\n", (int)(out_length/8000));
+    printf("Compressed to: %dB\n", (int)(out_length/8));
 
+    // terminator symbol / end of stream
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               data, bit_offset);
 
