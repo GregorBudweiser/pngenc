@@ -10,8 +10,9 @@ typedef struct _pngenc_node_deflate {
     pngenc_adler32 adler;
     uint8_t * compressed_buf;
     uint64_t bit_offset;
+    pngenc_compression_strategy strategy;
 } pngenc_node_deflate;
 
 int node_deflate_init(pngenc_node_deflate * node,
-                             const pngenc_image_desc * image);
+                      const pngenc_image_desc * image);
 void node_destroy_deflate(pngenc_node_deflate * node);

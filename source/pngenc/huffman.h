@@ -28,3 +28,4 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                                        uint8_t * dst, uint64_t * offset);
 int huffman_encoder_get_max_length(const huffman_encoder * encoder);
 int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder);
+uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder);

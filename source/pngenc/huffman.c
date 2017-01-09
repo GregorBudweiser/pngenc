@@ -403,3 +403,12 @@ int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     }
     return max_value;
 }
+
+uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder) {
+    for(int i = HUFF_MAX_SIZE-1; i >= 0; i--) {
+        if(encoder->histogram[i] > 0) {
+            return i;
+        }
+    }
+    return 0;
+}

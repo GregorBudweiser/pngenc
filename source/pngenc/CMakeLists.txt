@@ -5,6 +5,8 @@ set(pngenc_sources
     "crc32.c"
     "huffman.h"
     "huffman.c"
+    "matcher.h"
+    "matcher.c"
     "image_descriptor.h"
     "image_descriptor.c"
     "node.h"

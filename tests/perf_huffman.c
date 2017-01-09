@@ -18,19 +18,19 @@ int perf_huffman(int argc, char* argv[]) {
         fclose(f);
     }
 
-    huffman_encoder encoder_hist;
-    huffman_encoder_init(&encoder_hist);
+    huffman_encoder encoder;
+    huffman_encoder_init(&encoder);
 
     int i;
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add(encoder_hist.histogram, buf, C*W*H));
+        RETURN_ON_ERROR(huffman_encoder_add(encoder.histogram, buf, C*W*H));
         TIMING_END;
     }
 
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add_simple(encoder_hist.histogram, buf, C*W*H));
+        RETURN_ON_ERROR(huffman_encoder_add_simple(encoder.histogram, buf, C*W*H));
         TIMING_END;
     }
 

@@ -1,6 +1,7 @@
 #include "node_deflate.h"
 #include "adler32.h"
 #include "huffman.h"
+#include "matcher.h"
 #include "utils.h"
 #include <string.h>
 #include <assert.h>
@@ -28,16 +29,14 @@ int64_t deflate_encode(pngenc_node_deflate * node, uint8_t last_block);
  * @see dynamic_huffman_header_full()
  */
 int64_t dynamic_huffman_header(pngenc_node_deflate * node,
-                               huffman_encoder * encoder,
                                uint64_t *bit_offset);
 
 int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
-                                    huffman_encoder * encoder,
                                     uint64_t *bit_offset);
 
-
 int node_deflate_init(pngenc_node_deflate * node,
-                         const pngenc_image_desc * image) {
+                      const pngenc_image_desc * image) {
+    node->strategy = image->strategy;
     node->base.buf_size = image->strategy == PNGENC_NO_COMPRESSION
             ? 0xFFFF // Max size in uncompressed case
             : 1024*1024; // Compress 1 MB at a time
@@ -83,15 +82,11 @@ void push_bits(uint64_t bits, uint64_t nbits, uint8_t * data,
     *bit_offset = (*bit_offset) + nbits;
 }
 
-int64_t write_deflate_compressed(struct _pngenc_node * n, const uint8_t * data,
-                                 uint32_t size) {
-    pngenc_node_deflate * node = (pngenc_node_deflate*)n;
-    if(node->base.buf_pos == node->base.buf_size) {
-        RETURN_ON_ERROR(deflate_encode(node, 0));
-        node->base.buf_pos = 0;
-    }
-
-    // TODO: Make this block a function..
+/**
+ * consumes data from the input node and runs the checksum on it.
+ */
+int64_t consume_input(pngenc_node_deflate * node, const uint8_t * data,
+                      uint32_t size) {
     uint32_t bytes_copied = min_u32(size, (uint32_t)(node->base.buf_size
                                                    - node->base.buf_pos));
     memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
@@ -102,16 +97,33 @@ int64_t write_deflate_compressed(struct _pngenc_node * n, const uint8_t * data,
     return bytes_copied;
 }
 
+/**
+ * This function will be called multiple times until all data has been
+ * processed.
+ */
+int64_t write_deflate_compressed(struct _pngenc_node * n, const uint8_t * data,
+                                 uint32_t size) {
+    // do deflate compression
+    pngenc_node_deflate * node = (pngenc_node_deflate*)n;
+    if(node->base.buf_pos == node->base.buf_size) { // data ready?
+        RETURN_ON_ERROR(deflate_encode(node, 0));
+        node->base.buf_pos = 0;
+    }
+
+    // prepare data for compression
+    return consume_input(node, data, size);
+}
+
 int64_t deflate_encode(pngenc_node_deflate * node, uint8_t last_block) {
-    huffman_encoder encoder;
-    huffman_encoder_init(&encoder);
     uint64_t bit_offset = node->bit_offset;
 
     // write dynamic block header
     push_bits(last_block, 1, node->compressed_buf, &bit_offset); // last block?
     push_bits(2, 2, node->compressed_buf, &bit_offset); // dyn. huf. tree (10)_2
 
-    int64_t num_bytes = dynamic_huffman_header(node, &encoder, &bit_offset);
+    int64_t num_bytes = node->strategy == PNGENC_FULL_COMPRESSION
+            ? dynamic_huffman_header_full(node, &bit_offset)
+            : dynamic_huffman_header(node, &bit_offset);
     if(num_bytes < 0)
         return num_bytes; // Error exit
 
@@ -162,15 +174,8 @@ int64_t write_deflate_uncompressed(struct _pngenc_node * n,
         node->base.buf_pos = 0;
     }
 
-    // consume as much of current data as possible
-    uint32_t bytes_remaining = (uint32_t)(node->base.buf_size
-                                        - node->base.buf_pos);
-    uint32_t bytes_written = min_u32(bytes_remaining, size);
-    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_written);
-    adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
-                 bytes_written);
-    node->base.buf_pos += bytes_written;
-    return bytes_written;
+    // prepare data
+    return consume_input(node, data, size);
 }
 
 int64_t finish_deflate_compressed(struct _pngenc_node * n) {
@@ -235,20 +240,21 @@ int64_t init_deflate(struct _pngenc_node * node) {
 }
 
 int64_t dynamic_huffman_header(pngenc_node_deflate * node,
-                               huffman_encoder * encoder,
                                uint64_t * bit_offset) {
-    RETURN_ON_ERROR(huffman_encoder_add(encoder->histogram, node->base.buf,
+    huffman_encoder encoder;
+    huffman_encoder_init(&encoder);
+    RETURN_ON_ERROR(huffman_encoder_add(encoder.histogram, node->base.buf,
                                         (uint32_t)node->base.buf_pos));
-    encoder->histogram[256] = 1; // terminator
+    encoder.histogram[256] = 1; // terminator
 
     // in deflate the huffman codes are limited to 15 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
     huffman_encoder code_length_encoder;
     huffman_encoder_init(&code_length_encoder);
     huffman_encoder_add(code_length_encoder.histogram,
-                        encoder->code_lengths, 257);
+                        encoder.code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
@@ -314,8 +320,8 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
      */
     uint32_t i;
     for(i = 0; i < 257; i++) {
-        push_bits(code_length_encoder.symbols[encoder->code_lengths[i]],
-                  code_length_encoder.code_lengths[encoder->code_lengths[i]],
+        push_bits(code_length_encoder.symbols[encoder.code_lengths[i]],
+                  code_length_encoder.code_lengths[encoder.code_lengths[i]],
                   data, bit_offset);
     }
 
@@ -338,36 +344,41 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
      *  HDIST + 1 code lengths.  In other words, all code lengths form
      *  a single sequence of HLIT + HDIST + 258 values.
      */
-    RETURN_ON_ERROR(huffman_encoder_encode(encoder, node->base.buf,
+    RETURN_ON_ERROR(huffman_encoder_encode(&encoder, node->base.buf,
                                            (uint32_t)node->base.buf_pos, data,
                                            bit_offset));
-    push_bits(encoder->symbols[256], encoder->code_lengths[256],
+    push_bits(encoder.symbols[256], encoder.code_lengths[256],
               data, bit_offset);
 
     return ((*bit_offset)+7)/8;
 }
 
 int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
-                                    huffman_encoder * encoder,
                                     uint64_t * bit_offset) {
-    RETURN_ON_ERROR(huffman_encoder_add(encoder->histogram, node->base.buf,
-                                        (uint32_t)node->base.buf_pos));
-    encoder->histogram[256] = 1; // terminator
+    huffman_encoder encoder;
+    huffman_encoder code_length_encoder;
+    huffman_encoder_init(&encoder);
+    huffman_encoder_init(&code_length_encoder);
+
+    // TODO: put in node
+    uint16_t * out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
+    memset(out, 0, sizeof(uint16_t)*node->base.buf_pos);
+    uint64_t out_length = 0;
+
+    // histogramming + matching
+    histogram(node->base.buf, node->base.buf_pos, encoder.histogram, code_length_encoder.histogram, out, &out_length);
+    encoder.histogram[256] = 1; // terminator
 
     // in deflate the huffman codes are limited to 15 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
-    huffman_encoder code_length_encoder;
-    huffman_encoder_init(&code_length_encoder);
+    // add code lengths to histogram initalized with distance codes already
     huffman_encoder_add(code_length_encoder.histogram,
-                        encoder->code_lengths, 257);
+                        encoder.code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
-    // TODO: Pass code length encoder as parameter (inited with distance)
-    //       Then add code lengths to this histogram
-    //       Then encode distances too
     // code length codes limited to 7 bits
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
@@ -382,12 +393,14 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *               4 Bits: HCLEN, # of Code Length codes - 4     (4 - 19)
      */
     // 256 literals + 1 termination symbol
-    const uint8_t HLIT = 0;
+    const uint8_t HLIT = HUFF_MAX_SIZE - 257;
+    // TODO: Handle case where no distances are used..
     // 1 distance code; set it to 0 to signal that we only use literals
-    const uint8_t HDIST = 0;
+    const uint8_t HDIST = 32 - 1;
     // 19 code lengths of the actual code lengths (SEE RFC1951)
-    const uint8_t HCLEN = 0xF;
+    const uint8_t HCLEN = 19 - 4;
 
+    // Start outputting stuff
     uint8_t * data = node->compressed_buf;
     push_bits(HLIT,  5, data, bit_offset);
     push_bits(HDIST, 5, data, bit_offset);
@@ -403,10 +416,10 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *           corresponding symbol (literal/length or distance code
      *           length) is not used.
      */
-    push_bits(0, 3, data, bit_offset); // no length codes
+    // 19 code length lengths..
+    push_bits(0, 3, data, bit_offset); // no length codes for code lengths :)
     push_bits(0, 3, data, bit_offset);
     push_bits(0, 3, data, bit_offset);
-
     push_bits(code_length_encoder.code_lengths[ 0], 3, data, bit_offset);
     push_bits(code_length_encoder.code_lengths[ 8], 3, data, bit_offset);
     push_bits(code_length_encoder.code_lengths[ 7], 3, data, bit_offset);
@@ -429,9 +442,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *           encoded using the code length Huffman code
      */
     uint32_t i;
-    for(i = 0; i < 257; i++) {
-        push_bits(code_length_encoder.symbols[encoder->code_lengths[i]],
-                  code_length_encoder.code_lengths[encoder->code_lengths[i]],
+    for(i = 0; i < HUFF_MAX_SIZE; i++) {
+        push_bits(code_length_encoder.symbols[encoder.code_lengths[i]],
+                  code_length_encoder.code_lengths[encoder.code_lengths[i]],
                   data, bit_offset);
     }
 
@@ -439,8 +452,10 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *        HDIST + 1 code lengths for the distance alphabet,
      *           encoded using the code length Huffman code
      */
-    push_bits(code_length_encoder.symbols[0],
-              code_length_encoder.code_lengths[0], data, bit_offset);
+    for(i = 0; i < HDIST; i++) {
+        push_bits(code_length_encoder.symbols[i],
+                  code_length_encoder.code_lengths[i], data, bit_offset);
+    }
 
     /*
      *        The actual compressed data of the block,
@@ -454,10 +469,15 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *  HDIST + 1 code lengths.  In other words, all code lengths form
      *  a single sequence of HLIT + HDIST + 258 values.
      */
-    RETURN_ON_ERROR(huffman_encoder_encode(encoder, node->base.buf,
-                                           (uint32_t)node->base.buf_pos, data,
-                                           bit_offset));
-    push_bits(encoder->symbols[256], encoder->code_lengths[256],
+    // Temporary buffer to final compressed format
+    RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder, &code_length_encoder,
+                                                       out, out_length,
+                                                       data, bit_offset));
+
+    printf("Data to compress: %dkB\n", (int)(node->base.buf_pos/1000));
+    printf("Compressed to: %dkB\n", (int)(out_length/8000));
+
+    push_bits(encoder.symbols[256], encoder.code_lengths[256],
               data, bit_offset);
 
     return ((*bit_offset)+7)/8;
