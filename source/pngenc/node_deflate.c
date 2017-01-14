@@ -363,7 +363,8 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     huffman_encoder_init(&code_length_encoder);
 
     // TODO: put in node
-    uint16_t out[100]; //* out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
+    //uint16_t out[100];
+    uint16_t * out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
     memset(out, 0, sizeof(uint16_t)*node->base.buf_pos);
     uint32_t out_length;
 
@@ -371,6 +372,12 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     histogram(node->base.buf, node->base.buf_pos, encoder.histogram,
               distance_encoder.histogram, out, &out_length);
     encoder.histogram[256] = 1; // terminator
+
+    // Workaround for the case that there is only one dist. symbol
+    // (at least two symbols are needed for a valid huffman-tree (?))
+    // TODO: Fix this
+    distance_encoder.histogram[0]++;
+    distance_encoder.histogram[1]++;
 
     // in deflate the huffman codes are limited to 15 bits
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15));
@@ -380,9 +387,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
 
     // add code lengths of literals and distances to code-length histogram
     huffman_encoder_add(code_length_encoder.histogram,
-                        encoder.code_lengths, 257);
+                        encoder.code_lengths, HUFF_MAX_SIZE);
     huffman_encoder_add(code_length_encoder.histogram,
-                        distance_encoder.code_lengths, 257);
+                        distance_encoder.code_lengths, 30);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
