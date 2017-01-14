@@ -35,9 +35,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
                                     uint64_t *bit_offset);
 
 int node_deflate_init(pngenc_node_deflate * node,
-                      const pngenc_image_desc * image) {
-    node->strategy = image->strategy;
-    node->base.buf_size = image->strategy == PNGENC_NO_COMPRESSION
+                      pngenc_compression_strategy strategy) {
+    node->strategy = strategy;
+    node->base.buf_size = strategy == PNGENC_NO_COMPRESSION
             ? 0xFFFF // Max size in uncompressed case
             : 1024*1024; // Compress 1 MB at a time
     node->base.buf = malloc(node->base.buf_size);
@@ -53,10 +53,10 @@ int node_deflate_init(pngenc_node_deflate * node,
 
     // set functions
     node->base.init = &init_deflate;
-    node->base.finish = image->strategy == PNGENC_NO_COMPRESSION
+    node->base.finish = strategy == PNGENC_NO_COMPRESSION
             ? &finish_deflate_uncompressed
             : &finish_deflate_compressed;
-    node->base.write = image->strategy == PNGENC_NO_COMPRESSION
+    node->base.write = strategy == PNGENC_NO_COMPRESSION
             ? &write_deflate_uncompressed
             : &write_deflate_compressed;
 
@@ -363,7 +363,7 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     huffman_encoder_init(&code_length_encoder);
 
     // TODO: put in node
-    uint16_t * out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
+    uint16_t out[100]; //* out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
     memset(out, 0, sizeof(uint16_t)*node->base.buf_pos);
     uint32_t out_length;
 

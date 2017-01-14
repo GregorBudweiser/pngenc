@@ -122,7 +122,7 @@ int write_image_data(const pngenc_image_desc * descriptor,
     pngenc_node_idat node_idat;
     pngenc_node_custom node_user;
     node_data_generator_init(&node_data_gen, descriptor);
-    node_deflate_init(&node_deflate, descriptor);
+    node_deflate_init(&node_deflate, descriptor->strategy);
     node_idat_init(&node_idat);
 
     node_user.base.next = 0;
@@ -239,8 +239,7 @@ int write_row_uncompressed(const pngenc_image_desc * descriptor,
 
     // CRC32
     idat_check_sum = crc32c(idat_check_sum, (uint8_t*)&row_filter, 1);
-    idat_check_sum = crc32c(idat_check_sum,
-                            ((uint8_t*)descriptor->data)
+    idat_check_sum = crc32c(idat_check_sum, ((uint8_t*)descriptor->data)
                             + row*descriptor->row_stride, row_size);
 
     // Add adler crc to end of zlib data-stream

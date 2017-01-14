@@ -38,14 +38,14 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
                    uint32_t * symbol_histogram, uint32_t *dist_histogram,
                    uint16_t * out_buf, uint32_t * out_length) {
     // Deflate's maximum match
-    const uint32_t max_match_length = 257; //257;
+    uint32_t max_match_length = 257;
 
     tbl_entry hash_table[1 << 12];
     memset(hash_table, 0, (1 << 12)*sizeof(tbl_entry));
 
     uint32_t out_i = 0;
     uint32_t i, j;
-    for(i = 0; i < length-max_match_length; ) {
+    for(i = 0; i < length; max_match_length = min_u32(max_match_length, length - i)) {
         uint32_t hash = hash_12b((uint32_t*)(buf + i));
         uint32_t best_pos = 0;
         uint32_t best_length = 0;
