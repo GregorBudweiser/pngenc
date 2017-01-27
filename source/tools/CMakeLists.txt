@@ -12,4 +12,5 @@ target_link_libraries(timing_pngenc pngenc)
 add_executable(timing_libpng "timing_libpng.cpp" ${timing_sources})
 target_link_libraries(timing_libpng ${PNG_LIBRARY})
 
-
+add_executable(zpipe "zpipe.c" ${timing_sources})
+target_link_libraries(zpipe z)

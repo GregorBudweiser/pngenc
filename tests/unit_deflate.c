@@ -30,11 +30,12 @@ int unit_deflate(int argc, char* argv[]) {
 
     pngenc_node_deflate node;
     RETURN_ON_ERROR(node_deflate_init(&node, PNGENC_FULL_COMPRESSION));
+
     node.base.next = &node_debug;
 
     uint8_t buf[100];
     memset(buf, 0, 100);
-
+    RETURN_ON_ERROR(node.base.init(&node));
     RETURN_ON_ERROR(node_write(&node.base, buf, 100));
     RETURN_ON_ERROR(node_finish(&node.base));
 

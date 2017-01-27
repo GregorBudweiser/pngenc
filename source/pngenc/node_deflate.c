@@ -233,7 +233,7 @@ int64_t init_deflate(struct _pngenc_node * node) {
         uint8_t compression_method;
         uint8_t compression_flags;
     } hdr;
-    hdr.compression_method = 0x78;
+    hdr.compression_method = 0x78;  // 7 => 32K window (2^7); 8 => "Deflate"
     hdr.compression_flags = (31 - (((uint32_t)hdr.compression_method*256) % 31))
                           | (0 << 5) | (0 << 6); // FCHECK | FDICT | FLEVEL;
     return node_write(node->next, (uint8_t*)&hdr, sizeof(hdr));
@@ -409,8 +409,8 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     // 256 literals + 1 termination symbol
     const uint8_t HLIT = HUFF_MAX_SIZE - 257;
     // TODO: Handle case where no distances are used..
-    // 1 distance code; set it to 0 to signal that we only use literals
-    const uint8_t HDIST = 32 - 1;
+    // 32 distance codes; set it to 0 to signal that we only use literals
+    const uint8_t HDIST = 30 - 1;
     // 19 code lengths of the actual code lengths (SEE RFC1951)
     const uint8_t HCLEN = 19 - 4;
 
@@ -485,7 +485,7 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *  a single sequence of HLIT + HDIST + 258 values.
      */
     // Temporary buffer to final compressed format
-    RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder, &code_length_encoder,
+    RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder, &distance_encoder,
                                                        out, out_length,
                                                        data, bit_offset));
 
