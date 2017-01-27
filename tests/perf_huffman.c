@@ -1,6 +1,7 @@
 #include "common.h"
 #include "../source/pngenc/matcher.h"
 #include "../source/pngenc/huffman.h"
+#include "string.h"
 
 int perf_huffman(int argc, char* argv[]) {
     UNUSED(argc);
@@ -13,7 +14,7 @@ int perf_huffman(int argc, char* argv[]) {
     {
         FILE * f = fopen("data.bin", "rb");
         if(f == 0)
-            return 0;
+            return -1;
         fread(buf, C, W*H, f);
         fclose(f);
     }
@@ -21,13 +22,25 @@ int perf_huffman(int argc, char* argv[]) {
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
 
-    int i;
+    int i, j;
+    printf("skimm through memory\n");
+    for(i = 0; i < 5; i++) {
+        TIMING_START;
+        const int end = C*W*H/8;
+        for(j = 0; j < end; j++) {
+            volatile register uint64_t tmp = ((uint64_t*)buf)[j];
+        }
+        TIMING_END;
+    }
+
+    printf("optimized\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
         RETURN_ON_ERROR(huffman_encoder_add(encoder.histogram, buf, C*W*H));
         TIMING_END;
     }
 
+    printf("simple\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
         RETURN_ON_ERROR(huffman_encoder_add_simple(encoder.histogram, buf, C*W*H));
