@@ -397,6 +397,10 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
 
+    huffman_encoder_print(&code_length_encoder, "code_lengths");
+    huffman_encoder_print(&distance_encoder, "distances");
+    huffman_encoder_print(&encoder, "literals");
+
     /*
      * From the RFC:
      *
@@ -407,12 +411,11 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *               4 Bits: HCLEN, # of Code Length codes - 4     (4 - 19)
      */
     // 256 literals + 1 termination symbol
-    const uint8_t HLIT = HUFF_MAX_SIZE - 257;
-    // TODO: Handle case where no distances are used..
-    // 32 distance codes; set it to 0 to signal that we only use literals
-    const uint8_t HDIST = 30 - 1;
+    const uint32_t HLIT = HUFF_MAX_SIZE - 257;
+    // 30 distance codes; set it to 0 to signal that we only use literals
+    const uint32_t HDIST = 29 - 1; // @TODO: What's the exact limit and why?
     // 19 code lengths of the actual code lengths (SEE RFC1951)
-    const uint8_t HCLEN = 19 - 4;
+    const uint32_t HCLEN = 19 - 4;
 
     // Start outputting stuff
     uint8_t * data = node->compressed_buf;
@@ -456,7 +459,7 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *           encoded using the code length Huffman code
      */
     uint32_t i;
-    for(i = 0; i < HUFF_MAX_SIZE; i++) {
+    for(i = 0; i < HLIT + 257; i++) {
         push_bits(code_length_encoder.symbols[encoder.code_lengths[i]],
                   code_length_encoder.code_lengths[encoder.code_lengths[i]],
                   data, bit_offset);
@@ -485,6 +488,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *  a single sequence of HLIT + HDIST + 258 values.
      */
     // Temporary buffer to final compressed format
+    /*RETURN_ON_ERROR(huffman_encoder_encode(&encoder, node->base.buf,
+                                           (uint32_t)node->base.buf_pos, data,
+                                           bit_offset));*/
     RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder, &distance_encoder,
                                                        out, out_length,
                                                        data, bit_offset));

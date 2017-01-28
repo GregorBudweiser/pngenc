@@ -91,12 +91,19 @@ int def(FILE *source, FILE *dest, int level)
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-int inf(FILE *source, FILE *dest)
+int inf()
 {
     int ret;
     unsigned have;
     z_stream strm;
-    unsigned char in[CHUNK];
+    unsigned char in[56] = {
+        120,    1,
+        229,  253,    1,    4,    0,    0,    0,  128,   32,   12,    0,    0,    0,    0,    0,    0,
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+          0,    0,    0,    0,    0,    0,    0,    0,    0,   24,    0,    0,    8,   20,    0,    0,
+          0,  128,
+          0,  100,    0,    1
+    };
     unsigned char out[CHUNK];
 
     /* allocate inflate state */
@@ -109,13 +116,8 @@ int inf(FILE *source, FILE *dest)
     if (ret != Z_OK)
         return ret;
 
-    strm.avail_in = fread(in, 1, CHUNK, source);
-    if (ferror(source)) {
-        (void)inflateEnd(&strm);
-        return Z_ERRNO;
-    }
-    if (strm.avail_in == 0)
-        break;
+    strm.avail_in = 56; //fread(in, 1, CHUNK, source);
+
     strm.next_in = in;
 
     /* run inflate() on input until output buffer not full */
@@ -133,10 +135,7 @@ int inf(FILE *source, FILE *dest)
             return ret;
         }
         have = CHUNK - strm.avail_out;
-        if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
-            (void)inflateEnd(&strm);
-            return Z_ERRNO;
-        }
+        printf("bytes decompressed: %d\n", strm.avail_out);
     } while (strm.avail_out == 0);
 
 

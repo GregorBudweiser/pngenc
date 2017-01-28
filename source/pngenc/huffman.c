@@ -245,7 +245,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     memset(num_code_lengths, 0, sizeof(uint8_t)*MAX_BITS);
 
     uint32_t i;
-    for(i = 0; i < 257; i++) {
+    for(i = 0; i < HUFF_MAX_SIZE; i++) {
         assert(encoder->code_lengths[i]-1 < MAX_BITS);
         if(encoder->code_lengths[i] > 0)
             num_code_lengths[encoder->code_lengths[i]-1]++;
@@ -262,7 +262,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     }
 
     // Generate final codes
-    for (i = 0;  i <= 257; i++) {
+    for (i = 0;  i <= HUFF_MAX_SIZE; i++) {
         uint8_t len = encoder->code_lengths[i];
         if (len > 0) {
             encoder->symbols[i] = next_code[len-1];
@@ -271,7 +271,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     }
 
     // bitflip codes:
-    for (i = 0; i < 257; i++) {
+    for (i = 0; i < HUFF_MAX_SIZE; i++) {
         uint16_t symbol = encoder->symbols[i] << (16-encoder->code_lengths[i]);
         symbol = (bit_reverse_table_256[symbol & 0xFF] << 8)
                | (bit_reverse_table_256[(symbol & 0xFF00) >> 8]);
@@ -411,4 +411,14 @@ uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder) {
         }
     }
     return 0;
+}
+
+void huffman_encoder_print(const huffman_encoder * encoder, const char * name) {
+    printf("Huffman code for %s\n", name);
+    for(int i = 0; i < HUFF_MAX_SIZE; i++) {
+        if(encoder->code_lengths[i]) {
+            printf(" > Code %d: %d bits (%d)\n", i,
+                   encoder->code_lengths[i], encoder->symbols[i]);
+        }
+    }
 }
