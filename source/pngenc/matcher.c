@@ -76,13 +76,13 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
         if (best_length > 2) {
             out_i = encode_match_tmp(out_buf, out_i, best_length, i - best_pos,
                                      symbol_histogram, dist_histogram);
+            i += best_length;
         } else { // literal
+            printf("outputting literal: %d\n", buf[i]);
             out_buf[out_i++] = buf[i];
             symbol_histogram[buf[i]]++;
+            i++;
         }
-
-        // Increment counters
-        i += best_length + 1;
     }
     *out_length = out_i;
     return 0;
@@ -143,6 +143,8 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
                           uint32_t * symbol_histogram,
                           uint32_t * dist_histogram) {
 
+    printf("outputting length code: <%d,%d>\n", match_length, bwd_dist);
+
     // Encode length
     {
         match_length -= 3;
@@ -164,6 +166,9 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
         uint32_t mask = (0x1 << extra_bits) - 1;
         out[out_i] = (extra_bits << 8) | (match_length & mask);
         out_i += (int)(extra_bits > 0); // optionally increment (branchless)
+
+        printf(" > length_code: %d\n", length_code);
+        printf(" > extra_bits: %d (%d)\n", extra_bits, (match_length & mask));
     }
 
     // Encode backward distance
@@ -186,8 +191,11 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
         // contains the "extra bits". We mask them and store them to the next
         // element in the buffer.
         uint32_t mask = (0x1 << extra_bits) - 1;
-        out[out_i] = match_length & mask;
+        out[out_i] = (extra_bits << 13) | (match_length & mask);
         out_i += (int)(extra_bits > 0); // optionally increment (branchless)
+
+        printf(" > dist_code: %d\n", dist_code);
+        printf(" > extra_bits: %d (%d)\n", extra_bits, (match_length & mask));
     }
 
     return out_i;

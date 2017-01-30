@@ -338,7 +338,64 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
+void push_bits2(uint64_t bits, uint64_t nbits, uint8_t * data,
+                uint64_t * bit_offset) {
+    assert(bits < (0x1ULL) << nbits);
+    printf("pushing %d bits: %d\n", nbits, bits);
+
+    uint64_t local_offset = (*bit_offset) & 0x7;
+    uint8_t * local_data_ptr = data + ((*bit_offset) >> 3);
+    uint64_t local_data = *((uint64_t*)local_data_ptr);
+    local_data |= (bits << local_offset);
+    *((uint64_t*)local_data_ptr) = local_data;
+    *bit_offset = (*bit_offset) + nbits;
+}
+
 int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
+                                       const huffman_encoder * encoder_dist,
+                                       const uint16_t * src, uint32_t length,
+                                       uint8_t * dst, uint64_t * offset) {
+    size_t i = 0;
+    for(; i < length; i++) {
+        uint16_t current_byte = src[i];
+        // Handle literals (and literal part of matches)
+        push_bits2(encoder_hist->symbols[current_byte],
+                   encoder_hist->code_lengths[current_byte], dst, offset);
+
+        // Handle matches
+        if(current_byte > 255) { // literal was a length code
+            // Handle extra bits of length code
+            if(current_byte > 264) {
+                i++;
+                uint16_t length_extra_bits = src[i];
+                uint16_t num_extra_bits = length_extra_bits >> 8;
+                uint16_t symbol = length_extra_bits & 0xFF;
+                push_bits2(symbol, num_extra_bits, dst, offset);
+            }
+
+            // handle distance code
+            {
+                i++;
+                uint16_t dist_code = src[i];
+                push_bits2(encoder_dist->symbols[dist_code],
+                           encoder_dist->code_lengths[dist_code], dst, offset);
+
+                // Handle extra bits of distance code
+                if(dist_code > 3) {
+                    i++;
+                    const uint32_t mask = (0x1 << 13) - 1;
+                    uint16_t dist_extra_bits = src[i];
+                    uint16_t num_extra_bits = dist_extra_bits >> 13;
+                    uint16_t symbol = dist_extra_bits & mask;
+                    push_bits2(symbol, num_extra_bits, dst, offset);
+                }
+            }
+        }
+    }
+    return PNGENC_SUCCESS;
+}
+
+/*int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                                        const huffman_encoder * encoder_dist,
                                        const uint16_t * src, uint32_t length,
                                        uint8_t * dst, uint64_t * offset) {
@@ -394,7 +451,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
     *offset = positionInBits;
 
     return PNGENC_SUCCESS;
-}
+}*/
 
 int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;
