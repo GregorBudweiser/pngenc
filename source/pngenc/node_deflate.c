@@ -397,9 +397,9 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
 
-    huffman_encoder_print(&code_length_encoder, "code_lengths");
-    huffman_encoder_print(&distance_encoder, "distances");
-    huffman_encoder_print(&encoder, "literals");
+    //huffman_encoder_print(&code_length_encoder, "code_lengths");
+    //huffman_encoder_print(&distance_encoder, "distances");
+    //huffman_encoder_print(&encoder, "literals");
 
     /*
      * From the RFC:
@@ -488,15 +488,12 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
      *  a single sequence of HLIT + HDIST + 258 values.
      */
     // Temporary buffer to final compressed format
-    /*RETURN_ON_ERROR(huffman_encoder_encode(&encoder, node->base.buf,
-                                           (uint32_t)node->base.buf_pos, data,
-                                           bit_offset));*/
     RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder, &distance_encoder,
                                                        out, out_length,
                                                        data, bit_offset));
 
-    printf("Data to compress: %dkB\n", (int)(node->base.buf_pos/1000));
-    printf("Compressed to: %dB\n", (int)(out_length/8));
+    //printf("Data to compress: %dkB\n", (int)(node->base.buf_pos/1000));
+    //printf("Compressed to: %dB\n", (int)(out_length/8));
 
     // terminator symbol / end of stream
     push_bits(encoder.symbols[256], encoder.code_lengths[256],

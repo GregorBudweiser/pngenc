@@ -5,9 +5,17 @@
  * For each hash we are storing the 8 most recent matches.
  */
 #define NUM_HASH_ENTRIES 4
+
 typedef struct _tbl_entry {
     uint32_t positions[NUM_HASH_ENTRIES];
 } tbl_entry;
+
+/**
+ * We only allow 12bit extra bits to store the bits + len(bits) in one short.
+ * Thus we reduce the max window size to 16k!
+ */
+#define MAX_DIST_EXTRA_BITS 12
+
 
 void update_entry(tbl_entry * entry, uint32_t position);
 

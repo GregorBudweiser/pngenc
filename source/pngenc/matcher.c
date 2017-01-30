@@ -53,7 +53,9 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
         // Try all entries for the current hash
         for(j = 0; j < NUM_HASH_ENTRIES; j++) {
             uint32_t proposed_pos = hash_table[hash].positions[j];
-            if (i - proposed_pos - 1 > 32000) // -1 to fix case where i == proposed_pos
+            // 16k because we limit to 12 extra bits + 4 (2^4 >= len(extra bits)
+            // -1 to fix case where i == proposed_pos
+            if (i - proposed_pos - 1 > 16000)
                 continue;
 
             uint32_t match_length = match_fwd(buf, max_match_length,
@@ -78,7 +80,6 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
                                      symbol_histogram, dist_histogram);
             i += best_length;
         } else { // literal
-            printf("outputting literal: %d (offset=%d)\n", buf[i], out_i);
             out_buf[out_i++] = buf[i];
             symbol_histogram[buf[i]]++;
             i++;
@@ -142,9 +143,6 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
                           uint32_t match_length, uint32_t bwd_dist,
                           uint32_t * symbol_histogram,
                           uint32_t * dist_histogram) {
-
-    printf("outputting length code: <%d,%d>\n", match_length, bwd_dist);
-
     // Encode length
     {
         match_length -= 3;
@@ -166,9 +164,6 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
         uint32_t mask = (0x1 << extra_bits) - 1;
         out[out_i] = (extra_bits << 8) | (match_length & mask);
         out_i += (int)(extra_bits > 0); // optionally increment (branchless)
-
-        printf(" > length_code: %d\n", length_code);
-        printf(" > extra_bits: %d (%d)\n", extra_bits, (match_length & mask));
     }
 
     // Encode backward distance
@@ -191,11 +186,8 @@ uint32_t encode_match_tmp(uint16_t * out, uint32_t out_i,
         // contains the "extra bits". We mask them and store them to the next
         // element in the buffer.
         uint32_t mask = (0x1 << extra_bits) - 1;
-        out[out_i] = (extra_bits << 5) | (bwd_dist & mask);
+        out[out_i] = (extra_bits << 12) | (bwd_dist & mask);
         out_i += (int)(extra_bits > 0); // optionally increment (branchless)
-
-        printf(" > dist_code: %d\n", dist_code);
-        printf(" > extra_bits: %d (%d)\n", extra_bits, (bwd_dist & mask));
     }
 
     return out_i;

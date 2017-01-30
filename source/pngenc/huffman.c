@@ -103,7 +103,7 @@ int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
     // TODO: Compute optimal tree (e.g. use optimal algorithm)
     RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
     while(huffman_encoder_get_max_length(encoder) > limit) {
-        for(int i = 0; i < 257; i++) {
+        for(int i = 0; i < HUFF_MAX_SIZE; i++) {
             if(encoder->histogram[i]) {
                 // nonlinearly reduce weight of nodes to lower max tree depth
                 uint32_t reduced = (uint32_t)pow(encoder->histogram[i], 0.8);
@@ -338,68 +338,7 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
-void push_bits2(uint64_t bits, uint64_t nbits, uint8_t * data,
-                uint64_t * bit_offset) {
-    //assert(bits < (0x1ULL) << nbits);
-    printf(" > pushing %d bits: %d\n", nbits, bits);
-
-    uint64_t local_offset = (*bit_offset) & 0x7;
-    uint8_t * local_data_ptr = data + ((*bit_offset) >> 3);
-    uint64_t local_data = *((uint64_t*)local_data_ptr);
-    local_data |= (bits << local_offset);
-    *((uint64_t*)local_data_ptr) = local_data;
-    *bit_offset = (*bit_offset) + nbits;
-}
-
 int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
-                                       const huffman_encoder * encoder_dist,
-                                       const uint16_t * src, uint32_t length,
-                                       uint8_t * dst, uint64_t * offset) {
-    size_t i = 0;
-    for(; i < length; i++) {
-        uint16_t current_byte = src[i];
-        printf("literal:\n");
-        // Handle literals (and literal part of matches)
-        push_bits2(encoder_hist->symbols[current_byte],
-                   encoder_hist->code_lengths[current_byte], dst, offset);
-
-        // Handle matches
-        if(current_byte > 255) { // literal was a length code
-            // Handle extra bits of length code
-            if(current_byte > 264) {
-                printf("lit. extra:\n");
-                i++;
-                uint16_t length_extra_bits = src[i];
-                uint16_t num_extra_bits = length_extra_bits >> 8;
-                uint16_t symbol = length_extra_bits & 0xFF;
-                push_bits2(symbol, num_extra_bits, dst, offset);
-            }
-
-            // handle distance code
-            {
-                printf("distance:\n");
-                i++;
-                uint16_t dist_code = src[i];
-                push_bits2(encoder_dist->symbols[dist_code],
-                           encoder_dist->code_lengths[dist_code], dst, offset);
-
-                // Handle extra bits of distance code
-                if(dist_code > 3) {
-                    printf("dist extra:\n");
-                    i++;
-                    const uint32_t mask = (0x1 << 5) - 1;
-                    uint16_t dist_extra_bits = src[i];
-                    uint16_t num_extra_bits = dist_extra_bits >> 5;
-                    uint16_t symbol = dist_extra_bits & mask;
-                    push_bits2(symbol, num_extra_bits, dst, offset);
-                }
-            }
-        }
-    }
-    return PNGENC_SUCCESS;
-}
-
-/*int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                                        const huffman_encoder * encoder_dist,
                                        const uint16_t * src, uint32_t length,
                                        uint8_t * dst, uint64_t * offset) {
@@ -440,9 +379,9 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                 // Handle extra bits of distance code
                 if(dist_code > 3) {
                     i++;
-                    const uint32_t mask = (0x1 << 5) - 1;
+                    const uint32_t mask = (0x1 << 12) - 1;
                     uint16_t dist_extra_bits = src[i];
-                    uint16_t num_extra_bits = dist_extra_bits >> 5;
+                    uint16_t num_extra_bits = dist_extra_bits >> 12;
                     uint16_t symbol = dist_extra_bits & mask;
                     *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
                                                             << (positionInBits & 0x7);
@@ -455,7 +394,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
     *offset = positionInBits;
 
     return PNGENC_SUCCESS;
-}*/
+}
 
 int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;
