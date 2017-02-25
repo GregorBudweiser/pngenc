@@ -3,6 +3,9 @@ enable_testing()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+
+    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
+    #set(CMAKE_LINK_LIBRARY_FLAGS "${CMAKE_LINK_LIBRARY_FLAGS} -fopenmp")
 endif()
 
 # Replace with what you want
@@ -39,12 +42,14 @@ create_test(unit_deflate)
 # Integration tests
 create_test(integration_save_png)
 create_test(integration_save_png16)
+create_test(integration_pipeline)
 
 # Performance tests
 create_test(perf_huffman)
 
 # Miscellaneous tests
 create_test(misc_matcher)
+create_test(misc_circle)
 
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"

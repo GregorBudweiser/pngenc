@@ -32,11 +32,11 @@ int integration_save_png16(int argc, char* argv[])
 
     // Save uncompressed
     desc.strategy = PNGENC_NO_COMPRESSION;
-    ASSERT_TRUE(write_png_file(&desc, "i_save_png16_000.png") == PNGENC_SUCCESS);
+    ASSERT_TRUE(pngenc_write_file(&desc, "i_save_png16_000.png") == PNGENC_SUCCESS);
 
     // Save compressed
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
-    ASSERT_TRUE(write_png_file(&desc, "i_save_png16_001.png") == PNGENC_SUCCESS);
+    ASSERT_TRUE(pngenc_write_file(&desc, "i_save_png16_001.png") == PNGENC_SUCCESS);
     free(buf);
 
     return 0;

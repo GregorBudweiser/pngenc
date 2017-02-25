@@ -41,15 +41,32 @@ typedef struct _pngenc_image_desc {
 typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,
                                           void * user_data);
 
+struct _pngenc_pipeline;
+typedef struct _pngenc_pipeline* pngenc_pipeline;
+
 /**
  * Simply write png to specified file.
  */
-PNGENC_API int write_png_file(const pngenc_image_desc * descriptor,
-                              const char * filename);
+PNGENC_API
+int pngenc_write_file(const pngenc_image_desc * descriptor,
+                      const char * filename);
 
 /**
  * Encode png and use callback for storing to custom location (e.g. in memory).
  */
-PNGENC_API int write_png_func(const pngenc_image_desc * descriptor,
-                              pngenc_user_write_callback write_data_callback,
-                              void * user_data);
+PNGENC_API
+int pngenc_write_func(const pngenc_image_desc * descriptor,
+                      pngenc_user_write_callback write_data_callback,
+                      void * user_data);
+
+PNGENC_API
+pngenc_pipeline pngenc_pipeline_create(const pngenc_image_desc * descriptor,
+                                       pngenc_user_write_callback callback,
+                                       void *user_data);
+
+PNGENC_API
+int pngenc_pipeline_write(pngenc_pipeline pipeline,
+                          const pngenc_image_desc * descriptor, void *user_data);
+
+PNGENC_API
+int pngenc_pipeline_destroy(pngenc_pipeline pipeline);

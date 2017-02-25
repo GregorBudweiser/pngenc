@@ -8,6 +8,8 @@
 #include "node_data_gen.h"
 #include "node_deflate.h"
 #include "node_idat.h"
+#include "callback.h"
+#include "png_pipeline.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -17,13 +19,11 @@ int write_idat(const pngenc_image_desc * descriptor,
                pngenc_user_write_callback callback, void * user_data);
 int write_iend(pngenc_user_write_callback callback, void * user_data);
 
-int write_to_file_callback(const void * data, uint32_t data_len,
-                           void * user_data);
 int write_image_data(const pngenc_image_desc * descriptor,
                      pngenc_user_write_callback callback, void * user_data);
 PNGENC_API
-int write_png_file(const pngenc_image_desc * descriptor,
-                   const char * filename) {
+int pngenc_write_file(const pngenc_image_desc * descriptor,
+                      const char * filename) {
     FILE * file;
     int result;
 
@@ -34,7 +34,7 @@ int write_png_file(const pngenc_image_desc * descriptor,
     if(file == NULL)
         return PNGENC_ERROR_FILE_IO;
 
-    result = write_png_func(descriptor, &write_to_file_callback, file);
+    result = pngenc_write_func(descriptor, &write_to_file_callback, file);
     if(fclose(file) != 0)
         return PNGENC_ERROR_FILE_IO;
 
@@ -42,9 +42,9 @@ int write_png_file(const pngenc_image_desc * descriptor,
 }
 
 PNGENC_API
-int write_png_func(const pngenc_image_desc * descriptor,
-                   pngenc_user_write_callback write_data_callback,
-                   void * user_data) {
+int pngenc_write_func(const pngenc_image_desc * descriptor,
+                      pngenc_user_write_callback write_data_callback,
+                      void * user_data) {
     RETURN_ON_ERROR(check_descriptor(descriptor));
     RETURN_ON_ERROR(write_ihdr(descriptor, write_data_callback, user_data));
     RETURN_ON_ERROR(write_image_data(descriptor, write_data_callback,
@@ -105,16 +105,9 @@ int write_ihdr(const pngenc_image_desc * descriptor,
     return PNGENC_SUCCESS;
 }
 
-int64_t user_write_wrapper(struct _pngenc_node * n, const uint8_t * data,
-                           uint32_t size) {
-    pngenc_node_custom * node = (pngenc_node_custom*)n;
-    pngenc_user_write_callback user_provided_function = node->custom_data1;
-    RETURN_ON_ERROR(user_provided_function(data, size, node->custom_data0));
-    return size;
-}
-
 int write_image_data(const pngenc_image_desc * descriptor,
-         pngenc_user_write_callback callback, void * user_data) {
+                     pngenc_user_write_callback callback,
+                     void * user_data) {
 
     // Setup chain
     pngenc_node_data_gen node_data_gen;
@@ -144,6 +137,34 @@ int write_image_data(const pngenc_image_desc * descriptor,
     node_destroy_deflate(&node_deflate);
     node_destroy_idat(&node_idat);
 
+    return PNGENC_SUCCESS;
+}
+
+PNGENC_API
+pngenc_pipeline pngenc_pipeline_create(const pngenc_image_desc * descriptor,
+                                       pngenc_user_write_callback callback,
+                                       void * user_data) {
+    uint32_t num_bytes = sizeof(struct _pngenc_pipeline);
+    pngenc_pipeline pipeline = (pngenc_pipeline)malloc(num_bytes);
+    png_encoder_pipeline_init(pipeline, descriptor,callback, user_data);
+    return pipeline;
+}
+
+PNGENC_API
+int pngenc_pipeline_write(pngenc_pipeline pipeline,
+                          const pngenc_image_desc * descriptor,
+                          void * user_data) {
+    pipeline->node_user.custom_data0 = user_data;
+    RETURN_ON_ERROR(node_init((pngenc_node*)&pipeline->node_data_gen));
+    RETURN_ON_ERROR(png_encoder_pipeline_write(pipeline, descriptor,
+                                               user_data));
+    return PNGENC_SUCCESS;
+}
+
+PNGENC_API
+int pngenc_pipeline_destroy(pngenc_pipeline pipeline) {
+    RETURN_ON_ERROR(png_encoder_pipeline_destroy(pipeline));
+    free(pipeline);
     return PNGENC_SUCCESS;
 }
 
@@ -279,14 +300,4 @@ int write_iend(pngenc_user_write_callback callback, void * user_data) {
     RETURN_ON_ERROR(callback((void*)&iend, 8+4, user_data));
 
     return PNGENC_SUCCESS;
-}
-
-int write_to_file_callback(const void * data, uint32_t data_len,
-                           void * user_data) {
-    uint32_t bytesWritten;
-
-    bytesWritten = (uint32_t)fwrite(data, 1, data_len, (FILE*)user_data);
-    return bytesWritten == data_len
-            ? PNGENC_SUCCESS
-            : PNGENC_ERROR_FILE_IO;
 }

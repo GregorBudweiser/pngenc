@@ -11,9 +11,15 @@ int64_t min_i64(int64_t a, int64_t b);
 
 uint32_t min_u32(uint32_t a, uint32_t b);
 
+int32_t min_i32(int32_t a, int32_t b);
+
 uint32_t max_u32(uint32_t a, uint32_t b);
 
 int32_t max_i32(int32_t a, int32_t b);
+
+float max_f32(float a, float b);
+
+float max_f32(float a, float b);
 
 uint32_t swap_endianness32(uint32_t value);
 

@@ -1,6 +1,8 @@
 set(pngenc_sources
     "adler32.h"
     "adler32.c"
+    "callback.h"
+    "callback.c"
     "crc32.h"
     "crc32.c"
     "huffman.h"
@@ -18,6 +20,8 @@ set(pngenc_sources
     "node_deflate.c"
     "node_idat.h"
     "node_idat.c"
+    "png_pipeline.h"
+    "png_pipeline.c"
     "pngenc.h"
     "pngenc.c"
     "utils.h"

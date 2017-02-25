@@ -53,7 +53,7 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
         // Try all entries for the current hash
         for(j = 0; j < NUM_HASH_ENTRIES; j++) {
             uint32_t proposed_pos = hash_table[hash].positions[j];
-            // 16k because we limit to 12 extra bits + 4 (2^4 >= len(extra bits)
+            // 16k because we limit to 12 extra bits + 4; 2^4 >= len(extra bits)
             // -1 to fix case where i == proposed_pos
             if (i - proposed_pos - 1 > 16000)
                 continue;

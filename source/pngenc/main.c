@@ -19,13 +19,13 @@ int main() {
     desc.row_stride = (uint64_t)W*(uint64_t)C;
     desc.strategy = PNGENC_NO_COMPRESSION;
     desc.bit_depth = 8;
-    RETURN_ON_ERROR(write_png_file(&desc, "img_uncompressed.png"));
+    RETURN_ON_ERROR(pngenc_write_file(&desc, "img_uncompressed.png"));
 
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
-    RETURN_ON_ERROR(write_png_file(&desc, "img_compressed.png"));
+    RETURN_ON_ERROR(pngenc_write_file(&desc, "img_compressed.png"));
 
     desc.strategy = PNGENC_FULL_COMPRESSION;
-    RETURN_ON_ERROR(write_png_file(&desc, "img_full_compressed.png"));
+    RETURN_ON_ERROR(pngenc_write_file(&desc, "img_full_compressed.png"));
 
     free(buf);
 

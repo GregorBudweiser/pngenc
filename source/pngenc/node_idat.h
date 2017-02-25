@@ -1,3 +1,4 @@
+#pragma once
 #include "node.h"
 
 typedef struct _pngenc_node_idat {
