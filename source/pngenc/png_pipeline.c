@@ -14,8 +14,8 @@ int png_encoder_pipeline_init(pngenc_pipeline pipeline,
                               void * user_data) {
 
     node_data_generator_init(&pipeline->node_data_gen, descriptor);
-    node_idat_init(&pipeline->node_idat);
     node_deflate_init(&pipeline->node_deflate, descriptor->strategy);
+    node_idat_init(&pipeline->node_idat);
 
     pipeline->node_user.base.next = 0;
     pipeline->node_user.base.init = 0;
@@ -24,9 +24,9 @@ int png_encoder_pipeline_init(pngenc_pipeline pipeline,
     pipeline->node_user.custom_data0 = user_data;
     pipeline->node_user.custom_data1 = callback;
 
-    pipeline->node_data_gen.base.next = (pngenc_node*)&pipeline->node_idat;
-    pipeline->node_idat.base.next = (pngenc_node*)&pipeline->node_deflate;
-    pipeline->node_deflate.base.next = (pngenc_node*)&pipeline->node_user;
+    pipeline->node_data_gen.base.next = (pngenc_node*)&pipeline->node_deflate;
+    pipeline->node_deflate.base.next = (pngenc_node*)&pipeline->node_idat;
+    pipeline->node_idat.base.next = (pngenc_node*)&pipeline->node_user;
 
     return PNGENC_SUCCESS;
 }

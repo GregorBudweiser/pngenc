@@ -46,16 +46,16 @@ int main() {
         {
             LOG_TIME();
             sprintf(name, "out%03d.png", i);
-            RETURN_ON_ERROR(write_png_file(&desc, name));
+            RETURN_ON_ERROR(pngenc_write_file(&desc, name));
         }
 
         for(int i = 0; i < 10; i++)
         {
             LOG_TIME();
 #if defined(WIN32) || defined(__WIN32)
-            RETURN_ON_ERROR(write_png_file(&desc, "NUL"));
+            RETURN_ON_ERROR(pngenc_write_file(&desc, "NUL"));
 #else
-            RETURN_ON_ERROR(write_png_file(&desc, "/dev/null"));
+            RETURN_ON_ERROR(pngenc_write_file(&desc, "/dev/null"));
 #endif
         }
     }
