@@ -40,7 +40,7 @@ int unit_deflate(int argc, char* argv[]) {
     //    buf[10*i] = 0xFF;
     //}
     buf[11] = 0;//0xFF;
-    RETURN_ON_ERROR(node.base.init(&node));
+    RETURN_ON_ERROR(node.base.init(&node.base));
     RETURN_ON_ERROR(node_write(&node.base, buf, 13));
     RETURN_ON_ERROR(node_finish(&node.base));
 

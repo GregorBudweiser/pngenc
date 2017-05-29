@@ -29,6 +29,7 @@ int perf_huffman(int argc, char* argv[]) {
         const int end = C*W*H/8;
         for(j = 0; j < end; j++) {
             volatile register uint64_t tmp = ((uint64_t*)buf)[j];
+            UNUSED(tmp);
         }
         TIMING_END;
     }

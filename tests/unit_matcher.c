@@ -4,7 +4,7 @@
 #include <malloc.h>
 
 int test_hash() {
-    const int N = 10;
+    const uint32_t N = 10;
     uint8_t buf[10];
     uint32_t i = 0;
     for(i = 0; i < N; i++) {

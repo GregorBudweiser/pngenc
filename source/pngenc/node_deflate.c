@@ -369,7 +369,10 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     uint32_t out_length;
 
     // histogramming + matching
-    histogram(node->base.buf, node->base.buf_pos, encoder.histogram,
+    if(node->base.buf_pos > 0xFFFFFFFFULL) {
+        return PNGENC_ERROR; // TODO: Handle larger inputs
+    }
+    histogram(node->base.buf, (uint32_t)node->base.buf_pos, encoder.histogram,
               distance_encoder.histogram, out, &out_length);
     encoder.histogram[256] = 1; // terminator
 

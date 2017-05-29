@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 static const uint8_t bit_reverse_table_256[] =
 {

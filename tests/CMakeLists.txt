@@ -49,7 +49,6 @@ create_test(perf_huffman)
 
 # Miscellaneous tests
 create_test(misc_matcher)
-create_test(misc_circle)
 
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
