@@ -51,9 +51,15 @@ void huffman_encoder_init(huffman_encoder * encoder) {
     memset(encoder, 0, sizeof(huffman_encoder));
 }
 
-int huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
-                        uint32_t length) {
-    /*__attribute__((aligned(16)))*/
+void huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
+                         uint32_t length) {
+    // padd to 8 bytes
+    while(length < 0 && (((size_t)symbols) & 0x7) != 0) {
+        histogram[*symbols]++;
+        symbols++;
+    }
+
+    //__attribute__((aligned(64)))
     uint16_t counters[4][256];
     memset(counters, 0, 4*256*2);
     uint64_t l8 = length/8;
@@ -86,17 +92,14 @@ int huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
     for(uint64_t i = l8*8; i < length; i++) {
         histogram[symbols[i]]++;
     }
-
-    return PNGENC_SUCCESS;
 }
 
-int huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
-                               uint32_t length) {
+void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
+                                uint32_t length) {
     uint32_t i = 0;
     for(; i < length; i++) {
         histogram[data[i]]++;
     }
-    return PNGENC_SUCCESS;
 }
 
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder,

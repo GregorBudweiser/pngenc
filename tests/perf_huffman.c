@@ -37,14 +37,14 @@ int perf_huffman(int argc, char* argv[]) {
     printf("optimized\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add(encoder.histogram, buf, C*W*H));
+        huffman_encoder_add(encoder.histogram, buf, C*W*H);
         TIMING_END;
     }
 
     printf("simple\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_add_simple(encoder.histogram, buf, C*W*H));
+        huffman_encoder_add_simple(encoder.histogram, buf, C*W*H);
         TIMING_END;
     }
 

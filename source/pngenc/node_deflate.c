@@ -243,8 +243,8 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
                                uint64_t * bit_offset) {
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
-    RETURN_ON_ERROR(huffman_encoder_add(encoder.histogram, node->base.buf,
-                                        (uint32_t)node->base.buf_pos));
+    huffman_encoder_add(encoder.histogram, node->base.buf,
+                        (uint32_t)node->base.buf_pos);
     encoder.histogram[256] = 1; // terminator
 
     // in deflate the huffman codes are limited to 15 bits
