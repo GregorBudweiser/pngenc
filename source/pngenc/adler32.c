@@ -116,6 +116,9 @@ void adler_copy_on_update(pngenc_adler32 * adler, const uint8_t * data,
         // compute 8 bytes in one iteration
         while(k < n) {
             register uint64_t currentData = data64[k];
+            dst64[k] = currentData;
+            k++;
+
             register uint8_t u0 = currentData & 0xFF;
             s1 = (s1 + u0);
             s2 = (s2 + s1);
@@ -148,8 +151,6 @@ void adler_copy_on_update(pngenc_adler32 * adler, const uint8_t * data,
             s1 = (s1 + u7);
             s2 = (s2 + s1);
 
-            dst64[k] = data64[k];
-            k++;
         }
 
         s1 = s1 % 65521;
