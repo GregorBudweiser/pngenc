@@ -10,7 +10,7 @@ int64_t init_data_generator(struct _pngenc_node * node);
 
 
 int node_data_generator_init(pngenc_node_data_gen * node,
-                               const pngenc_image_desc * image) {
+                             const pngenc_image_desc * image) {
     node->base.buf_size = get_num_bytes_per_row(image);
     node->base.buf = malloc(node->base.buf_size);
     node->base.buf_pos = 0;
