@@ -95,9 +95,6 @@ int64_t consume_input(pngenc_node_deflate * node, const uint8_t * data,
 
     adler_copy_on_update(&node->adler, data, bytes_copied,
                          (uint8_t*)node->base.buf + node->base.buf_pos);
-    /*memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
-    adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
-                 bytes_copied);*/
     node->base.buf_pos += bytes_copied;
 
     return bytes_copied;

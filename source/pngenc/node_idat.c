@@ -65,9 +65,8 @@ int64_t write_idat(struct _pngenc_node * n, const uint8_t * data,
     // consume as much of current data as possible
     int64_t bytes_remaining = node->base.buf_size - node->base.buf_pos;
     int64_t bytes_written = min_i64(bytes_remaining, size);
-    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_written);
-    node->crc = crc32c(node->crc, (uint8_t*)node->base.buf + node->base.buf_pos,
-                       bytes_written);
+    node->crc = copy_on_crc32c(node->crc, data, bytes_written,
+                               (uint8_t*)node->base.buf + node->base.buf_pos);
     node->base.buf_pos += bytes_written;
     return bytes_written;
 }
