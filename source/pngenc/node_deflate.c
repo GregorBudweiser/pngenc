@@ -40,14 +40,18 @@ int node_deflate_init(pngenc_node_deflate * node,
     node->base.buf_size = strategy == PNGENC_NO_COMPRESSION
             ? 0xFFFF // Max size in uncompressed case
             : 1024*1024; // Compress 1 MB at a time
-    node->base.buf = malloc(node->base.buf_size);
+
+    // conservative guess for max size
+    uint64_t max_compressed_size = node->base.buf_size*2 + 2048;
+    // allocate input and output buffers at once
+    node->base.buf = malloc(node->base.buf_size + max_compressed_size);
     node->base.buf_pos = 0;
     node->base.next = 0;
 
     // add adler checksum
     adler_init(&node->adler);
-    // conservative guess for max size
-    node->compressed_buf = (uint8_t*)malloc(node->base.buf_size*2 + 2048);
+
+    node->compressed_buf = (uint8_t*)node->base.buf + node->base.buf_size;
     memset(node->compressed_buf, 0, node->base.buf_size*2 + 2048);
     node->bit_offset = 0;
 
@@ -67,7 +71,6 @@ void node_destroy_deflate(pngenc_node_deflate * node) {
     assert(node);
 
     free(node->base.buf);
-    free(node->compressed_buf);
 }
 
 void push_bits(uint64_t bits, uint64_t nbits, uint8_t * data,
@@ -89,9 +92,12 @@ int64_t consume_input(pngenc_node_deflate * node, const uint8_t * data,
                       uint32_t size) {
     uint32_t bytes_copied = min_u32(size, (uint32_t)(node->base.buf_size
                                                    - node->base.buf_pos));
-    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
+
+    adler_copy_on_update(&node->adler, data, bytes_copied,
+                         (uint8_t*)node->base.buf + node->base.buf_pos);
+    /*memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
     adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
-                 bytes_copied);
+                 bytes_copied);*/
     node->base.buf_pos += bytes_copied;
 
     return bytes_copied;
