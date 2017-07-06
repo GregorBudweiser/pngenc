@@ -1,27 +1,31 @@
 README
 ======
-This is pngenc, a fast png encoder focusing on performance rather than compression.
-It features two fast modes: 
+This is pngenc: A small, simple to use and fast png encoder. 
+It is meant as a supplement to other png codecs where encoding performance is critical.
+
+Pngenc features two fast modes: 
  * Uncompressed
  * "Huffman Only" compression (i.e. no range coding)
 
-In those modes pngenc is about 4-5 times faster than libpng and about 10x faster than libpng's default
+In those modes pngenc is about 4-6 times faster than libpng and about 10 times faster than libpng's default
 compression settings. For natural images the compression ratio of the "Huffman Only" 
 compression is 10% worse than that of full Huffman + Dictionary compression.
 For synthetic images pngenc's compression ratio may not be optimal (but speed is still there).
 
 Pngenc is written in C and compiles down to ~45KB of code. It is optimized for the x86_64 platform but is not tied to it. 
-Pngenc can be compiled with gcc, MinGW and MSVC for both 32 and 64 machines. It also runs on arm (tested on a Raspberry PI).
+Pngenc can be compiled with gcc and clang on linux as well as MinGW and MSVC on windows for both 32 and 64 machines. 
+It also runs on arm (tested on a Raspberry PI).
+
 
 TYPICAL RUNTIMES
 ================
 24bit FullHD @ i7 860 (save to /dev/null):
- * Uncompressed: 11ms
- * Compressed: 28ms
+ * Uncompressed: 8ms
+ * Compressed: 22ms
  
 24bit FullHD @ i7 4770 (save to /dev/null):
- * Uncompressed: 8ms
- * Compressed: 19ms
+ * Uncompressed: 6ms
+ * Compressed: 17ms
 
 COMPILE
 =======
@@ -30,7 +34,8 @@ To build pngenc just use cmake:
 cd /to/pngenc
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
+
 
 BENCHMARKS
 ==========
