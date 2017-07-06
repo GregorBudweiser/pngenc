@@ -7,14 +7,9 @@ Pngenc features two fast modes:
  * Uncompressed
  * "Huffman Only" compression (i.e. no range coding)
 
-In those modes pngenc is about 4-6 times faster than libpng and about 10 times faster than libpng's default
-compression settings. For natural images the compression ratio of the "Huffman Only" 
-compression is 10% worse than that of full Huffman + Dictionary compression.
-For synthetic images pngenc's compression ratio may not be optimal (but speed is still there).
+In those modes pngenc is about 4-6 times faster than libpng and about 10 times faster than libpng's default compression settings. For natural images the compression ratio of the "Huffman Only" compression is 10% worse than that of full Huffman + Dictionary compression. For synthetic images pngenc's compression ratio may not be optimal (but speed is still there).
 
-Pngenc is written in C and compiles down to ~45KB of code. It is optimized for the x86_64 platform but is not tied to it. 
-Pngenc can be compiled with gcc and clang on linux as well as MinGW and MSVC on windows for both 32 and 64 machines. 
-It also runs on arm (tested on a Raspberry PI).
+Pngenc is written in C and compiles down to ~45KB of code. It is optimized for the x86_64 platform but is not tied to it. Pngenc can be compiled with gcc and clang on linux as well as MinGW and MSVC on windows for both 32 and 64 machines. It also runs on arm (tested on a Raspberry PI).
 
 
 TYPICAL RUNTIMES
