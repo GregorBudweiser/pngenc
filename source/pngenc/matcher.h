@@ -1,11 +1,14 @@
 #include <stdint.h>
 
+
+#define NUM_HASH_ENTRIES 3
+
+#define POT_HASH_TABLE_SIZE 12
+
 /**
  * Hash table entry.
- * For each hash we are storing the 8 most recent matches.
+ * For each hash we are storing the most recent matches.
  */
-#define NUM_HASH_ENTRIES 4
-
 typedef struct _tbl_entry {
     uint32_t positions[NUM_HASH_ENTRIES];
 } tbl_entry;

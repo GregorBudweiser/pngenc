@@ -30,7 +30,7 @@ int integration_pipeline(int argc, char* argv[]) {
     desc.num_channels = C;
     desc.row_stride = W*C;
     desc.bit_depth = 8;
-    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1; //PNGENC_NO_COMPRESSION;//
+    desc.strategy = PNGENC_NO_COMPRESSION;//
 
     pngenc_pipeline pipeline;
     pipeline = pngenc_pipeline_create(&desc, &write_to_file_callback, NULL);

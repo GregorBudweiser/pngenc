@@ -22,7 +22,7 @@ void update_entry(tbl_entry * entry, uint32_t position) {
 // 3 bytes to 12 bits hash function
 uint32_t hash_12b(const uint32_t * data) {
     uint32_t current = *data;
-    return ((current >> 12) ^ current) & 0x0FFF;
+    return (((current >> 12) & 0xFFF)*31 ^ (current & 0xFFF)) & ((1 << POT_HASH_TABLE_SIZE) - 1);
 }
 
 uint32_t match_fwd(const uint8_t * buf, uint32_t max_match_length,
@@ -31,7 +31,7 @@ uint32_t match_fwd(const uint8_t * buf, uint32_t max_match_length,
     while((i < max_match_length) & (buf[proposed_pos+i] == buf[current_pos+i])) {
         i++;
     }
-    return i;
+    return i & ~0x15;
 }
 
 uint32_t histogram(const uint8_t * buf, uint32_t length,
@@ -40,8 +40,8 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
     // Deflate's maximum match
     uint32_t max_match_length = 257;
 
-    tbl_entry hash_table[1 << 12];
-    memset(hash_table, 0, (1 << 12)*sizeof(tbl_entry));
+    tbl_entry hash_table[1 << POT_HASH_TABLE_SIZE];
+    memset(hash_table, 0, (1 << POT_HASH_TABLE_SIZE)*sizeof(tbl_entry));
 
     uint32_t out_i = 0;
     uint32_t i, j;
