@@ -30,3 +30,4 @@ double get_time_passed_ms(time_type prev);
 
 #define TIMING_START time_type _start = get_timestamp()
 #define TIMING_END printf("Call to %s: %.02fms\n", __FUNCTION__, get_time_passed_ms(_start));
+#define TIMING_END_MB(x) printf("Call to %s: %.02fGB/s\n", __FUNCTION__, x/get_time_passed_ms(_start));

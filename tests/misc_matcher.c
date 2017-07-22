@@ -5,7 +5,7 @@
 #include <malloc.h>
 #include <string.h>
 
-uint64_t compress3(uint8_t * buf, uint16_t * out, uint32_t size) {
+uint64_t compress_full(uint8_t * buf, uint16_t * out, uint32_t size) {
 
     huffman_encoder encoder_hist;
     huffman_encoder encoder_dist;
@@ -42,7 +42,7 @@ uint64_t compress3(uint8_t * buf, uint16_t * out, uint32_t size) {
     return offset;
 }
 
-uint64_t compress2(const uint8_t * buf, uint16_t * out, uint32_t size) {
+uint64_t compress_huff_only(const uint8_t * buf, uint16_t * out, uint32_t size) {
     huffman_encoder encoder_hist;
     huffman_encoder_init(&encoder_hist);
     encoder_hist.histogram[256] = 1;
@@ -101,11 +101,13 @@ int misc_matcher(int argc, char* argv[]) {
     uint16_t * out = (uint16_t*)malloc(W*H*C*sizeof(uint16_t));
     memset(out, 0, W*H*C*sizeof(uint16_t));
     {
+        TIMING_START;
         const int N = 6;
         uint64_t offset = 0;
         for(i = 0; i < N; i++) {
-            offset += compress2(buf + i*W*H*C/N, out, W*H*C/N-1);
+            offset += compress_huff_only(buf + i*W*H*C/N, out, W*H*C/N-1);
         }
+        TIMING_END;
         printf("out_length: %d/%d => %.02f%%\n",
                (int)offset/8, C*W*H, 100.0f*(float)(offset/8)/(float)(C*W*H));
 
@@ -115,11 +117,13 @@ int misc_matcher(int argc, char* argv[]) {
 
     memset(out, 0, W*H*C*sizeof(uint16_t));
     {
+        TIMING_START;
         const int N = 6;
         uint64_t offset = 0;
         for(i = 0; i < N; i++) {
-            offset += compress3(buf + i*W*H*C/N, out, W*H*C/N-1);
+            offset += compress_full(buf + i*W*H*C/N, out, W*H*C/N-1);
         }
+        TIMING_END;
         printf("out_length: %d/%d => %.02f%%\n",
                (int)offset/8, C*W*H, 100.0f*(float)(offset/8)/(float)(C*W*H));
     }

@@ -46,6 +46,7 @@ create_test(integration_pipeline)
 
 # Performance tests
 create_test(perf_huffman)
+create_test(perf_adler)
 
 # Miscellaneous tests
 create_test(misc_matcher)
