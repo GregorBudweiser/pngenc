@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 
-#define NUM_HASH_ENTRIES 3
+#define NUM_HASH_ENTRIES 1
 
 #define POT_HASH_TABLE_SIZE 12
 

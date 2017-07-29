@@ -22,13 +22,15 @@ uint64_t compress_full(uint8_t * buf, uint16_t * out, uint32_t size) {
 
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15));
+        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15, 0.95));
+        //RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_hist));
         TIMING_END;
     }
 
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_dist, 15));
+        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_dist, 15, 0.95));
+        //RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_dist));
         TIMING_END;
     }
 
@@ -55,7 +57,7 @@ uint64_t compress_huff_only(const uint8_t * buf, uint16_t * out, uint32_t size) 
 
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15));
+        RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15, 0.8));
         RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder_hist));
         TIMING_END;
     }
@@ -127,6 +129,8 @@ int misc_matcher(int argc, char* argv[]) {
         printf("out_length: %d/%d => %.02f%%\n",
                (int)offset/8, C*W*H, 100.0f*(float)(offset/8)/(float)(C*W*H));
     }
+
+    printf("libpng target (@163ms): %d/%d => %.02f%%\n", 3404447, C*W*H, 100.0f*(float)(3404447)/(float)(C*W*H));
 
     free(out);
     free(buf);

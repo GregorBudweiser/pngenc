@@ -102,15 +102,18 @@ void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
     }
 }
 
+/**
+ * @param power: Higher values give better codes but need more iterations
+ */
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
-                                       uint8_t limit) {
+                                       uint8_t limit, double power) {
     // TODO: Compute optimal tree (e.g. use optimal algorithm)
     RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
     while(huffman_encoder_get_max_length(encoder) > limit) {
         for(int i = 0; i < HUFF_MAX_SIZE; i++) {
             if(encoder->histogram[i]) {
                 // nonlinearly reduce weight of nodes to lower max tree depth
-                uint32_t reduced = (uint32_t)pow(encoder->histogram[i], 0.8);
+                uint32_t reduced = (uint32_t)pow(encoder->histogram[i], power);
                 encoder->histogram[i] = max_u32(1, reduced);
             }
         }

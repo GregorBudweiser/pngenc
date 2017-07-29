@@ -9,8 +9,8 @@
 #include "../system/TimerLog.h"
 #include <cstring>
 
-void write(const char * filename, bool compress,
-           int width, int height, uint8_t * data) {
+void write(const char * filename, int width, int height, uint8_t * data,
+           int level, int strategy, int filter) {
 
     uint8_t ** row_pointers = new uint8_t*[height];
     for(int y = 0; y < height; y++) {
@@ -30,16 +30,10 @@ void write(const char * filename, bool compress,
 
     png_init_io(png, fp);
 
+    png_set_compression_level(png, level);
+    png_set_compression_strategy(png, strategy);
+    png_set_filter(png, 0, filter);
 
-    if(compress) {
-        png_set_compression_level(png, 2);
-        png_set_compression_strategy(png, 2);
-        png_set_filter(png, 0, PNG_FILTER_SUB);
-    } else {
-        png_set_compression_level(png, 0);
-        png_set_compression_strategy(png, 0);
-        png_set_filter(png, 0, PNG_FILTER_NONE);
-    }
 
     // Output is 8bit depth, RGBA format.
     png_set_IHDR(
@@ -90,22 +84,31 @@ int main()
         bool compressed = (bool)j;
 
         LOG_TIME();
-        char name[1000];
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 10; i++)
         {
+            char name[1000];
             LOG_TIME();
-            sprintf (name, "out%04d.png", i);
-            write(name, compressed, W, H, buf);
+            sprintf (name, "out%03d.png", i);
+            if (compressed) {
+                write(name, W, H, buf, 2, 2, PNG_FILTER_SUB);
+            } else {
+                write(name, W, H, buf, 0, 0, PNG_FILTER_NONE);
+            }
         }
 
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 10; i++)
         {
             LOG_TIME();
 #if defined(WIN32) || defined(__WIN32)
-            write("nil", compressed, W, H, mydata);
+            const char * name = "nil";
 #else
-            write("/dev/null", compressed, W, H, buf);
+            const char * name = "/dev/null";
 #endif
+            if (compressed) {
+                write(name, W, H, buf, 2, 2, PNG_FILTER_SUB);
+            } else {
+                write(name, W, H, buf, 0, 0, PNG_FILTER_NONE);
+            }
         }
     }
 

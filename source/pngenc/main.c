@@ -11,6 +11,10 @@ int main() {
     uint8_t * buf = malloc(W*H*C);
     memset(buf, 0x0, W*H*C);
 
+    uint32_t i;
+    for(i = 0; i < W*H*C; i++)
+        buf[i] = i;
+
     pngenc_image_desc desc;
     desc.data = buf;
     desc.width = W;
