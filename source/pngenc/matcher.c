@@ -43,6 +43,10 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
     tbl_entry hash_table[1 << POT_HASH_TABLE_SIZE];
     memset(hash_table, 0, (1 << POT_HASH_TABLE_SIZE)*sizeof(tbl_entry));
 
+    // match from previous iteration
+    uint32_t prev_best_length = 0;
+    uint32_t prev_best_pos = 0;
+
     uint32_t out_i = 0;
     uint32_t i, j;
     for(i = 0; i < length; max_match_length = min_u32(max_match_length, length - i)) {
@@ -74,16 +78,39 @@ uint32_t histogram(const uint8_t * buf, uint32_t length,
         // Update stuff according to best entry
         update_entry(hash_table + hash, i);
 
-        // Temporary output
-        if (best_length > 2) {
-            out_i = encode_match_tmp(out_buf, out_i, best_length, i - best_pos,
-                                     symbol_histogram, dist_histogram);
-            i += best_length;
-        } else { // literal
-            out_buf[out_i++] = buf[i];
-            symbol_histogram[buf[i]]++;
-            i++;
+        // did we have a match in last iter?
+        if(prev_best_length > 0) {
+            // pick last match over current
+            if((int32_t)prev_best_length > (int32_t)best_length - 4) {
+                // undo literal of last iteration
+                out_i--;
+                i--;
+                symbol_histogram[buf[i]]--;
+
+                // encode match of previous iteration
+                out_i = encode_match_tmp(out_buf, out_i, prev_best_length,
+                                         i - prev_best_pos, symbol_histogram,
+                                         dist_histogram);
+                i += prev_best_length;
+
+                // set "prev" match to zero for next iter
+                prev_best_length = 0;
+                continue;
+            }
         }
+
+        // did we have a match in this iter?
+        if(best_length > 2) {
+            // Remember that we had a match
+            prev_best_length = best_length;
+            prev_best_pos = best_pos;
+        }
+
+        // unconditionally output literal
+        out_buf[out_i++] = buf[i];
+        symbol_histogram[buf[i]]++;
+        i++;
+
     }
     *out_length = out_i;
     return 0;
