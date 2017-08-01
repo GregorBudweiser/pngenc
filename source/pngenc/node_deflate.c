@@ -92,9 +92,14 @@ int64_t consume_input(pngenc_node_deflate * node, const uint8_t * data,
                       uint32_t size) {
     uint32_t bytes_copied = min_u32(size, (uint32_t)(node->base.buf_size
                                                    - node->base.buf_pos));
-
+#if __arm__
+    memcpy((uint8_t*)node->base.buf + node->base.buf_pos, data, bytes_copied);
+    adler_update(&node->adler, (uint8_t*)node->base.buf + node->base.buf_pos,
+                 bytes_copied);
+#else
     adler_copy_on_update(&node->adler, data, bytes_copied,
                          (uint8_t*)node->base.buf + node->base.buf_pos);
+#endif
     node->base.buf_pos += bytes_copied;
 
     return bytes_copied;

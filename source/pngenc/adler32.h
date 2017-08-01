@@ -7,8 +7,14 @@ typedef struct _pngenc_adler32 {
 } pngenc_adler32;
 
 void adler_init(pngenc_adler32 * adler);
+
 void adler_update(pngenc_adler32 * adler, const uint8_t * data,
                   uint32_t length);
+void adler_update32(pngenc_adler32 * adler, const uint8_t * data,
+                    uint32_t length);
+void adler_update64(pngenc_adler32 * adler, const uint8_t * data,
+                    uint32_t length);
+
 uint32_t adler_get_checksum(const pngenc_adler32 * adler);
 void adler_copy_on_update(pngenc_adler32 * adler, const uint8_t * data,
                           uint32_t length, uint8_t * dst);

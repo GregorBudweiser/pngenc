@@ -132,7 +132,6 @@ uint32_t copy_on_crc32c(uint32_t crci, const void *buf,
     }
     while (len >= 8) {
         register const uint64_t value =  *(uint64_t *)next;
-        *(uint64_t*)dst = value;
         crc ^= value;
         crc = crc32c_table[7][crc & 0xff] ^
               crc32c_table[6][(crc >> 8) & 0xff] ^
@@ -142,6 +141,7 @@ uint32_t copy_on_crc32c(uint32_t crci, const void *buf,
               crc32c_table[2][(crc >> 40) & 0xff] ^
               crc32c_table[1][(crc >> 48) & 0xff] ^
               crc32c_table[0][crc >> 56];
+        *(uint64_t*)dst = value;
         next += 8;
         dst += 8;
         len -= 8;

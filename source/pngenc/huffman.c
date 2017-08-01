@@ -53,6 +53,15 @@ void huffman_encoder_init(huffman_encoder * encoder) {
 
 void huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
                          uint32_t length) {
+    if(sizeof(size_t) == 8) {
+        huffman_encoder_add64(histogram, symbols, length);
+    } else {
+        huffman_encoder_add32(histogram, symbols, length);
+    }
+}
+
+void huffman_encoder_add64(uint32_t * histogram, const uint8_t * symbols,
+                           uint32_t length) {
     // padd to 8 bytes
     while(length < 0 && (((size_t)symbols) & 0x7) != 0) {
         histogram[*symbols]++;
@@ -90,6 +99,47 @@ void huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
 
     // Unpadded trailing bytes..
     for(uint64_t i = l8*8; i < length; i++) {
+        histogram[symbols[i]]++;
+    }
+}
+
+
+void huffman_encoder_add32(uint32_t * histogram, const uint8_t * symbols,
+                           uint32_t length) {
+    // padd to 8 bytes
+    while(length > 0 && (((size_t)symbols) & 0x7) != 0) {
+        histogram[*symbols]++;
+        symbols++;
+        length--;
+    }
+
+    //__attribute__((aligned(64)))
+    uint16_t counters[4][256];
+    memset(counters, 0, 4*256*2);
+    uint32_t l8 = length/4;
+
+    const uint32_t * data = (const uint32_t*)symbols;
+
+    // Each sub-histogram gets updated twice -> 2*0x7FFF = UINT16_MAX
+    for(uint32_t start = 0; start < length; start += 0xFFFF) {
+        uint32_t end = min_u32(l8, start + 0xFFFF);
+        for(uint32_t i = start; i < end; i++) {
+            register uint32_t tmp = data[i];
+            counters[0][tmp & 0xFF]++;
+            counters[1][(tmp >>  8) & 0xFF]++;
+            counters[2][(tmp >> 16) & 0xFF]++;
+            counters[3][tmp >> 24]++;
+        }
+
+        for(int i = 0; i < 256; i++) {
+            histogram[i] += counters[0][i] + counters[1][i]
+                          + counters[2][i] + counters[3][i];
+        }
+        memset(counters, 0, 4*256*2);
+    }
+
+    // Unpadded trailing bytes..
+    for(uint64_t i = l8*4; i < length; i++) {
         histogram[symbols[i]]++;
     }
 }
@@ -290,6 +340,15 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t * offset) {
+    if(sizeof(size_t) == 8) {
+        return huffman_encoder_encode64(encoder, src, length, dst, offset);
+    } else {
+        return huffman_encoder_encode32(encoder, src, length, dst, offset);
+    }
+}
+
+int huffman_encoder_encode64(const huffman_encoder * encoder, const uint8_t * src,
+                             uint32_t length, uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 64; // 64 bit / min Symbol size
     if(length <= padding) {
         return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
@@ -308,6 +367,41 @@ int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
             localPositionInBits += encoder->code_lengths[src[i]];
             i++;
             currentWindow |= (uint64_t)(encoder->symbols[src[i]])
+                          << localPositionInBits;
+            localPositionInBits += encoder->code_lengths[src[i]];
+            i++;
+        }
+        positionInBits = (positionInBits & ~7) + localPositionInBits;
+        *ptr = currentWindow;
+    }
+
+    // Padding
+    for(; i < length; i++) {
+        *((uint64_t*)(dst+(positionInBits>>3))) |= encoder->symbols[src[i]]
+                                                << (positionInBits & 0x7);
+        positionInBits += encoder->code_lengths[src[i]];
+    }
+
+    *offset = positionInBits;
+    return PNGENC_SUCCESS;
+}
+
+int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * src,
+                             uint32_t length, uint8_t * dst, uint64_t * offset) {
+    const uint32_t padding = 64; // 64 bit / min Symbol size
+    if(length <= padding) {
+        return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+    }
+
+    const size_t fastEnd = length - padding;
+    uint64_t positionInBits = *offset;
+    size_t i;
+    for(i = 0; i < fastEnd; ) {
+        uint32_t* ptr = ((uint32_t*)(dst+(positionInBits>>3)));
+        uint32_t currentWindow = *ptr;
+        uint32_t localPositionInBits = positionInBits & 7;
+        while(localPositionInBits <= 17) {
+            currentWindow |= (uint32_t)(encoder->symbols[src[i]])
                           << localPositionInBits;
             localPositionInBits += encoder->code_lengths[src[i]];
             i++;
