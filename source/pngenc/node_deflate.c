@@ -352,7 +352,7 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
      *  HDIST + 1 code lengths.  In other words, all code lengths form
      *  a single sequence of HLIT + HDIST + 258 values.
      */
-    RETURN_ON_ERROR(huffman_encoder_encode2(&encoder, node->base.buf,
+    RETURN_ON_ERROR(huffman_encoder_encode(&encoder, node->base.buf,
                                            (uint32_t)node->base.buf_pos, data,
                                            bit_offset));
     push_bits(encoder.symbols[256], encoder.code_lengths[256],

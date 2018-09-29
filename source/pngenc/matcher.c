@@ -31,7 +31,7 @@ uint32_t match_fwd(const uint8_t * buf, uint32_t max_match_length,
     while((i < max_match_length) & (buf[proposed_pos+i] == buf[current_pos+i])) {
         i++;
     }
-    return i & ~0x7;
+    return i;
 }
 
 uint32_t histogram(const uint8_t * buf, uint32_t length,

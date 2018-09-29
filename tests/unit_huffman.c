@@ -90,24 +90,39 @@ int test_huffman_encode() {
     ref_offset = 0;
     huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset);
 
-    // Compare optimized version
-    uint64_t offset;
-    uint8_t dst[2*N];
-    memset(dst, 0, N);
-    offset = 0;
-    huffman_encoder_encode(&encoder, src, N, dst, &offset);
+    // Compare optimized versions
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64(&encoder, src, N, dst, &offset);
 
-    ASSERT_TRUE(offset == ref_offset);
-    ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
 
-    uint64_t offset2;
-    uint8_t dst2[2*N];
-    memset(dst2, 0, N);
-    offset2 = 0;
-    huffman_encoder_encode2(&encoder, src, N, dst2, &offset2);
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64_2(&encoder, src, N, dst, &offset);
 
-    ASSERT_TRUE(offset2 == ref_offset);
-    ASSERT_TRUE(memcmp(ref, dst2, N) == 0);
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
+
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64_3(&encoder, src, N, dst, &offset);
+
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
     return 0;
 }
 
@@ -132,25 +147,41 @@ int test_huffman_encode_multi() {
     huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset);
 
     // Check we get the same when encoding is split up into two steps
-    uint64_t offset;
-    uint8_t dst[2*N];
-    memset(dst, 0, N);
-    offset = 0;
-    huffman_encoder_encode_simple(&encoder, src, N/2, dst, &offset);
-    huffman_encoder_encode_simple(&encoder, src+N/2, N/2, dst, &offset);
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64(&encoder, src, N/2+3, dst, &offset);
+        huffman_encoder_encode64(&encoder, src+N/2+3, N/2-3, dst, &offset);
 
-    ASSERT_TRUE(offset == ref_offset);
-    ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
 
-    uint64_t offset2;
-    uint8_t dst2[2*N];
-    memset(dst2, 0, N);
-    offset2 = 0;
-    huffman_encoder_encode2(&encoder, src, N/2+3, dst, &offset2);
-    huffman_encoder_encode2(&encoder, src+N/2+3, N/2-3, dst, &offset2);
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64_2(&encoder, src, N/2+3, dst, &offset);
+        huffman_encoder_encode64_2(&encoder, src+N/2+3, N/2-3, dst, &offset);
 
-    ASSERT_TRUE(offset2 == ref_offset);
-    ASSERT_TRUE(memcmp(ref, dst2, N) == 0);
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
+
+    {
+        uint64_t offset;
+        uint8_t dst[2*N];
+        memset(dst, 0, N);
+        offset = 0;
+        huffman_encoder_encode64_3(&encoder, src, N/2+3, dst, &offset);
+        huffman_encoder_encode64_3(&encoder, src+N/2+3, N/2-3, dst, &offset);
+
+        ASSERT_TRUE(offset == ref_offset);
+        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+    }
     return 0;
 }
 

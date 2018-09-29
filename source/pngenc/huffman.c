@@ -341,15 +341,18 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t * offset) {
     if(sizeof(size_t) == 8) {
-        return huffman_encoder_encode64(encoder, src, length, dst, offset);
+        return huffman_encoder_encode64_2(encoder, src, length, dst, offset);
     } else {
         return huffman_encoder_encode32(encoder, src, length, dst, offset);
     }
 }
 
-
-int huffman_encoder_encode2(const huffman_encoder * encoder, const uint8_t * src,
-                            uint32_t length, uint8_t * dst, uint64_t * offset) {
+/**
+ * This function is based on huffman_encoder_encode64() but tries to compress a few
+ * symbols at once to increase function level parallelism.
+ */
+int huffman_encoder_encode64_2(const huffman_encoder * encoder, const uint8_t * src,
+                               uint32_t length, uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 64; // 64 bit / min Symbol size
     if(length <= padding) {
         return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
@@ -449,6 +452,7 @@ int huffman_encoder_encode64(const huffman_encoder * encoder, const uint8_t * sr
     return PNGENC_SUCCESS;
 }
 
+
 int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * src,
                              uint32_t length, uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 64; // 64 bit / min Symbol size
@@ -484,10 +488,15 @@ int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * sr
     return PNGENC_SUCCESS;
 }
 
-
-int huffman_encoder_encode3(const huffman_encoder * encoder,
-                            const uint8_t * src, uint32_t length,
-                            uint8_t * dst, uint64_t * offset) {
+/**
+ * This function does not have unaligned memory writes like the other encode functions.
+ * Measured by itself, this is the fastest one. But when combined with the other stuff
+ * in the pipeline it tends to be outperformed by encode64_2.
+ * TODO: Why?
+ */
+int huffman_encoder_encode64_3(const huffman_encoder * encoder,
+                               const uint8_t * src, uint32_t length,
+                               uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 32; // 64 bit / min Symbol size
     if(length <= padding) {
         return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
