@@ -2,7 +2,7 @@
 enable_testing()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops -march=native -fopenmp -O3")
 
     #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
     #set(CMAKE_LINK_LIBRARY_FLAGS "${CMAKE_LINK_LIBRARY_FLAGS} -fopenmp")
@@ -47,6 +47,10 @@ create_test(integration_pipeline)
 # Performance tests
 create_test(perf_huffman)
 create_test(perf_adler)
+create_test(perf_fft)
+create_test(perf_misc)
+create_test(perf_string)
+create_test(perf_hash)
 
 # Miscellaneous tests
 create_test(misc_matcher)

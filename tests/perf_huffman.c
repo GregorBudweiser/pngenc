@@ -3,22 +3,11 @@
 #include "../source/pngenc/huffman.h"
 #include "string.h"
 
-int perf_huffman(int argc, char* argv[]) {
-    UNUSED(argc);
-    UNUSED(argv);
+const int W = 1920;
+const int H = 1080;
+const int C = 3;
 
-    const int W = 1920;
-    const int H = 1080;
-    const int C = 3;
-    uint8_t * buf = (uint8_t*)malloc(W*H*C);
-    {
-        FILE * f = fopen("data.bin", "rb");
-        if(f == 0)
-            return -1;
-        fread(buf, C, W*H, f);
-        fclose(f);
-    }
-
+void perf_add(const uint8_t * buf) {
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
 
@@ -47,6 +36,63 @@ int perf_huffman(int argc, char* argv[]) {
         huffman_encoder_add_simple(encoder.histogram, buf, C*W*H);
         TIMING_END;
     }
+}
+
+void perf_encode(const uint8_t * buf, uint8_t * dst) {
+    huffman_encoder encoder;
+    huffman_encoder_init(&encoder);
+    huffman_encoder_add(encoder.histogram, buf, C*W*H);
+    huffman_encoder_build_tree_limited(&encoder, 15, 0.95);
+
+    uint64_t offset;
+    int i;
+
+    printf("encoding simple\n");
+    for(i = 0; i < 5; i++) {
+        offset = 0;
+        memset(dst, 0, W*H*C);
+        TIMING_START;
+        huffman_encoder_encode_simple(&encoder, buf, C*W*H, dst, &offset);
+        TIMING_END;
+    }
+
+    printf("encoding optimized\n");
+    for(i = 0; i < 5; i++) {
+        offset = 0;
+        memset(dst, 0, W*H*C);
+        TIMING_START;
+        huffman_encoder_encode(&encoder, buf, C*W*H, dst, &offset);
+        TIMING_END;
+    }
+
+    printf("encoding optimized2\n");
+    for(i = 0; i < 5; i++) {
+        offset = 0;
+        memset(dst, 0, W*H*C);
+        TIMING_START;
+        huffman_encoder_encode3(&encoder, buf, C*W*H, dst, &offset);
+        TIMING_END;
+    }
+}
+
+int perf_huffman(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+    uint8_t * buf = (uint8_t*)malloc(W*H*C);
+    {
+        FILE * f = fopen("data.bin", "rb");
+        if(f == 0) {
+            printf("Could not open file: data.bin\n");
+            return -1;
+        }
+        fread(buf, C, W*H, f);
+        fclose(f);
+    }
+
+    uint8_t * dst = (uint8_t*)malloc(W*H*C);
+
+    perf_add(buf);
+    perf_encode(buf, dst);
 
     free(buf);
     return 0;

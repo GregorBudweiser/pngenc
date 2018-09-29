@@ -347,6 +347,69 @@ int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
     }
 }
 
+
+int huffman_encoder_encode2(const huffman_encoder * encoder, const uint8_t * src,
+                            uint32_t length, uint8_t * dst, uint64_t * offset) {
+    const uint32_t padding = 64; // 64 bit / min Symbol size
+    if(length <= padding) {
+        return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+    }
+
+    const size_t fastEnd = length - padding;
+    uint64_t positionInBits = *offset;
+    size_t i;
+    for(i = 0; i < fastEnd; i+=6) {
+        uint64_t* ptr = ((uint64_t*)(dst+(positionInBits>>3)));
+        uint64_t currentWindow = *ptr;
+        uint64_t localPositionInBits = positionInBits & 7;
+
+        // Work on 2 x 3 bytes/symbols: Combine 3 symbols into one register each (max 45 bits)
+        uint64_t localWindowA = (uint64_t)(encoder->symbols[src[i]]);
+        uint64_t localWindowB = (uint64_t)(encoder->symbols[src[i+3]]);
+
+        uint64_t localBitsA = encoder->code_lengths[src[i]];
+        uint64_t localBitsB = encoder->code_lengths[src[i+3]];
+
+        localWindowA |= (uint64_t)(encoder->symbols[src[i+1]]) << localBitsA;
+        localWindowB |= (uint64_t)(encoder->symbols[src[i+4]]) << localBitsB;
+        localBitsA += encoder->code_lengths[src[i+1]];
+        localBitsB += encoder->code_lengths[src[i+4]];
+
+        localWindowA |= (uint64_t)(encoder->symbols[src[i+2]]) << localBitsA;
+        localWindowB |= (uint64_t)(encoder->symbols[src[i+5]]) << localBitsB;
+        localBitsA += encoder->code_lengths[src[i+2]];
+        localBitsB += encoder->code_lengths[src[i+5]];
+
+        // Combine A
+        currentWindow |= localWindowA << localPositionInBits;
+        localPositionInBits += localBitsA;
+        positionInBits = (positionInBits & ~7) + localPositionInBits;
+        *ptr = currentWindow;
+
+        // Reload current window
+        ptr = ((uint64_t*)(dst+(positionInBits>>3)));
+        currentWindow = *ptr;
+        localPositionInBits = positionInBits & 7;
+
+        // Combine B
+        currentWindow |= localWindowB << localPositionInBits;
+        localPositionInBits += localBitsB;
+        positionInBits = (positionInBits & ~7) + localPositionInBits;
+        *ptr = currentWindow;
+    }
+
+    // Padding
+    for(; i < length; i++) {
+        *((uint64_t*)(dst+(positionInBits>>3))) |= encoder->symbols[src[i]]
+                                                << (positionInBits & 0x7);
+        positionInBits += encoder->code_lengths[src[i]];
+    }
+
+    *offset = positionInBits;
+    return PNGENC_SUCCESS;
+}
+
+
 int huffman_encoder_encode64(const huffman_encoder * encoder, const uint8_t * src,
                              uint32_t length, uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 64; // 64 bit / min Symbol size
@@ -418,6 +481,57 @@ int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * sr
     }
 
     *offset = positionInBits;
+    return PNGENC_SUCCESS;
+}
+
+
+int huffman_encoder_encode3(const huffman_encoder * encoder,
+                            const uint8_t * src, uint32_t length,
+                            uint8_t * dst, uint64_t * offset) {
+    const uint32_t padding = 32; // 64 bit / min Symbol size
+    if(length <= padding) {
+        return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+    }
+
+    const uint64_t fastEnd = length - padding;
+    uint8_t * start = (dst + (*offset >> 3));
+    start = (uint8_t*)((uintptr_t)start & ~0x3); // 4-byte aligned (i.e. 32bit aligned)
+    uint64_t positionInBits = *offset & 31;      // Offset modulo 32
+    uint32_t* ptr = (uint32_t*)start;            // Pointer to the current window
+    uint64_t window = *ptr;
+
+    uint64_t i = 0;
+    for(; i < fastEnd; ) {
+        // Add symbols until we have 32bits to write out
+        while(positionInBits < 32) {
+            window |= encoder->symbols[src[i]] << positionInBits;
+            positionInBits += encoder->code_lengths[src[i]];
+            window |= encoder->symbols[src[i+1]] << positionInBits;
+            positionInBits += encoder->code_lengths[src[i+1]];
+            i += 2;
+        }
+
+        *ptr = (uint32_t)window; // Write out compressed stuff in chunks of 32bits
+        window = window >> 32;
+        ptr++;
+        positionInBits &= 31;
+    }
+
+
+    *ptr = (uint32_t)window; // Write out remaining bits
+    *(ptr+1) = 0; // Clear next 64bits to allow subsequent access via 64bit reads
+    *(ptr+2) = 0;
+    positionInBits += (((uint8_t*)ptr) - dst)*8;
+
+    // Padding
+    for(; i < length; i++) {
+        *((uint64_t*)(dst+(positionInBits>>3))) |= encoder->symbols[src[i]]
+                                                << (positionInBits & 0x7);
+        positionInBits += encoder->code_lengths[src[i]];
+    }
+
+    *offset = positionInBits;
+
     return PNGENC_SUCCESS;
 }
 

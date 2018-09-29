@@ -28,8 +28,8 @@ int main() {
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_compressed.png"));
 
-    desc.strategy = PNGENC_FULL_COMPRESSION;
-    RETURN_ON_ERROR(pngenc_write_file(&desc, "img_full_compressed.png"));
+    //desc.strategy = PNGENC_FULL_COMPRESSION;
+    //RETURN_ON_ERROR(pngenc_write_file(&desc, "img_full_compressed.png"));
 
     free(buf);
 
