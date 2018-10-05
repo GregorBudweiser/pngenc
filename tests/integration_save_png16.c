@@ -3,15 +3,15 @@
 #include <malloc.h>
 #include <pngenc/pngenc.h>
 
-static const int W = 200;
-static const int H = 200;
+static const int W = 160;
+static const int H = 60;
 
 void fill(uint16_t * buf, int x0, int y0, int w, int h, uint16_t val, const int C) {
     for(int y = y0; y < y0+h; y++) {
         for(int x = x0; x < x0+w; x++) {
             for(int c = 0; c < C; c++) {
-                if (C & 0x1 == 0 && c == C-1) { // is alpha channel?
-                    buf[(y*W+x)*C+c] = 0xFF;
+                if ((C == 2 || C == 4) && c+1 == C) { // is alpha channel?
+                    buf[(y*W+x)*C+c] = 0xFFFF;
                 } else {
                     buf[(y*W+x)*C+c] = val;
                 }
@@ -24,9 +24,9 @@ int save(const int C) {
     uint16_t * buf = (uint16_t*)malloc(C*W*H*2);
     memset(buf, 0, C*W*H*2);
 
-    fill(buf, 10, 10, 30, 30, 0, C);
-    fill(buf, 50, 10, 30, 30, 0x8888, C);
-    fill(buf, 110, 10, 30, 30, 0xFFFF, C);
+    fill(buf, 10, 10, 40, 40, 0x0000, C);
+    fill(buf, 60, 10, 40, 40, 0x8888, C);
+    fill(buf, 110, 10, 40, 40, 0xFFFF, C);
 
     pngenc_image_desc desc;
     desc.data = (uint8_t*)buf;
@@ -57,7 +57,7 @@ int integration_save_png16(int argc, char* argv[]) {
     UNUSED(argv);
 
     int c;
-    for (c = 1; c <= 3; c++) {
+    for (c = 1; c <= 4; c++) {
         save(c);
     }
 
