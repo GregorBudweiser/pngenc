@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     PngEnc
  * Method:    writePngFile
- * Signature: (Ljava/lang/String;Ljava/nio/ByteBuffer;IIII)I
+ * Signature: (Ljava/lang/String;Ljava/nio/ByteBuffer;IIIII)I
  */
 JNIEXPORT jint JNICALL Java_PngEnc_writePngFile
-  (JNIEnv *, jclass, jstring, jobject, jint, jint, jint, jint);
+  (JNIEnv *, jclass, jstring, jobject, jint, jint, jint, jint, jint);
 
 #ifdef __cplusplus
 }
