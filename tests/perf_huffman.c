@@ -3,9 +3,9 @@
 #include "../source/pngenc/huffman.h"
 #include "string.h"
 
-const int W = 1920;
-const int H = 1080;
-const int C = 3;
+static const int W = 1920;
+static const int H = 1080;
+static const int C = 3;
 
 void perf_add(const uint8_t * buf) {
     huffman_encoder encoder;

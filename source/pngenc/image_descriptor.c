@@ -12,7 +12,7 @@ int check_descriptor(const pngenc_image_desc * descriptor) {
     if(descriptor->width == 0 || descriptor->height == 0)
         return PNGENC_ERROR_INVALID_ARG;
 
-    if(descriptor->num_channels > 4)
+    if(descriptor->num_channels > 4 || descriptor->num_channels == 0)
         return PNGENC_ERROR_INVALID_ARG;
 
     if((uint64_t)descriptor->row_stride < get_num_bytes_per_row(descriptor))

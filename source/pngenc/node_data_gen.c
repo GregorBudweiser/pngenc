@@ -75,7 +75,7 @@ int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
                     dst[i] = swap_uint16(src[i]);
 
                 for(i = c; i < length; i++)
-                    dst[i] = swap_uint16(src[i] - src[i-c]);
+                    dst[i] = swap_uint16(src[i]) - swap_uint16(src[i-c]);
             }
 
             RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
