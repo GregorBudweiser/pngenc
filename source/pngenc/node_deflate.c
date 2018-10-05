@@ -370,8 +370,7 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     huffman_encoder_init(&distance_encoder);
     huffman_encoder_init(&code_length_encoder);
 
-    // TODO: put in node
-    //uint16_t out[100];
+    // TODO: put output buffer in node
     uint16_t * out = (uint16_t*)malloc(sizeof(uint16_t)*node->base.buf_pos);
     memset(out, 0, sizeof(uint16_t)*node->base.buf_pos);
     uint32_t out_length;
@@ -509,6 +508,8 @@ int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
     // terminator symbol / end of stream
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               data, bit_offset);
+
+    free(out);
 
     return ((*bit_offset)+7)/8;
 }
