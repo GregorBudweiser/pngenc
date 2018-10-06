@@ -3,46 +3,69 @@
 #include <malloc.h>
 #include <pngenc/pngenc.h>
 
-int integration_save_png(int argc, char* argv[])
-{
-    UNUSED(argc);
-    UNUSED(argv);
+static const int W = 160;
+static const int H = 60;
 
-    const int W = 100;
-    const int H = 100;
-    const int C = 3;
-    uint8_t * buf = (uint8_t*)malloc(C*W*H);
-    memset(buf, 0, C*W*H);
-    for(int y = 0; y < H; y++) {
-        for(int x = 0; x < W; x++) {
-            uint8_t val = (uint8_t)(x << 4);
-            buf[(y*W+x)*C  ] = val;
-            buf[(y*W+x)*C+1] = val;
-            buf[(y*W+x)*C+2] = val;
+static void fill(uint8_t * buf, int x0, int y0, int w, int h, uint8_t val, const int C) {
+    for(int y = y0; y < y0+h; y++) {
+        for(int x = x0; x < x0+w; x++) {
+            for(int c = 0; c < C; c++) {
+                if ((C == 2 || C == 4) && c+1 == C) { // is alpha channel?
+                    buf[(y*W+x)*C+c] = 0xFF;
+                } else {
+                    buf[(y*W+x)*C+c] = val;
+                }
+            }
         }
     }
+}
+
+static int save(const int C) {
+    uint8_t * buf = (uint8_t*)malloc(C*W*H);
+    memset(buf, 0, C*W*H);
+
+    fill(buf, 10, 10, 40, 40, 0x00, C);
+    fill(buf, 60, 10, 40, 40, 0x88, C);
+    fill(buf, 110, 10, 40, 40, 0xFF, C);
 
     pngenc_image_desc desc;
-    desc.data = buf;
+    desc.data = (uint8_t*)buf;
     desc.width = W;
     desc.height = H;
     desc.num_channels = C;
     desc.row_stride = C*W;
     desc.bit_depth = 8;
 
+    char filename[256];
+
     // Save uncompressed
     desc.strategy = PNGENC_NO_COMPRESSION;
-    ASSERT_TRUE(pngenc_write_file(&desc, "i_save_png_000.png") == PNGENC_SUCCESS);
+    sprintf(filename, "integration_save_png_%dC_uncomp.png", C);
+    ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
+
+    // Save compressed (huffman only)
+    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
+    sprintf(filename, "integration_save_png_%dC_comp.png", C);
+    ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
 
     // Save compressed
-    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
-    ASSERT_TRUE(pngenc_write_file(&desc, "i_save_png_001.png") == PNGENC_SUCCESS);
-
-    // Save fully compressed
     desc.strategy = PNGENC_FULL_COMPRESSION;
-    ASSERT_TRUE(pngenc_write_file(&desc, "i_save_png_002.png") == PNGENC_SUCCESS);
+    sprintf(filename, "integration_save_png_%dC_full.png", C);
+    ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
 
     free(buf);
+
+    return PNGENC_SUCCESS;
+}
+
+int integration_save_png(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+
+    int c;
+    for (c = 1; c <= 4; c++) {
+        save(c);
+    }
 
     return 0;
 }

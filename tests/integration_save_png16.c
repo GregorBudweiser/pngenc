@@ -6,7 +6,7 @@
 static const int W = 160;
 static const int H = 60;
 
-void fill(uint16_t * buf, int x0, int y0, int w, int h, uint16_t val, const int C) {
+static void fill(uint16_t * buf, int x0, int y0, int w, int h, uint16_t val, const int C) {
     for(int y = y0; y < y0+h; y++) {
         for(int x = x0; x < x0+w; x++) {
             for(int c = 0; c < C; c++) {
@@ -20,7 +20,7 @@ void fill(uint16_t * buf, int x0, int y0, int w, int h, uint16_t val, const int 
     }
 }
 
-int save(const int C) {
+static int save(const int C) {
     uint16_t * buf = (uint16_t*)malloc(C*W*H*2);
     memset(buf, 0, C*W*H*2);
 
@@ -43,10 +43,16 @@ int save(const int C) {
     sprintf(filename, "integration_save_png16_%dC_uncomp.png", C);
     ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
 
-    // Save compressed
+    // Save compressed (huffman only)
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     sprintf(filename, "integration_save_png16_%dC_comp.png", C);
     ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
+
+    // Save compressed
+    desc.strategy = PNGENC_FULL_COMPRESSION;
+    sprintf(filename, "integration_save_png16_%dC_full.png", C);
+    ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
+
     free(buf);
 
     return PNGENC_SUCCESS;
