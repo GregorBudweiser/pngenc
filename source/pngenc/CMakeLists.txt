@@ -28,9 +28,7 @@ set(pngenc_sources
     "utils.c"
 )
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops -O3")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /DPNGENC_EXPORT=1")
 endif()
 

@@ -1,13 +1,6 @@
 #testing stuff
 enable_testing()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -DPNGENC_EXPORT=1 -Wall -Werror=return-type -mtune=native -funroll-loops -march=native -fopenmp -O3")
-
-    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
-    #set(CMAKE_LINK_LIBRARY_FLAGS "${CMAKE_LINK_LIBRARY_FLAGS} -fopenmp")
-endif()
-
 # Replace with what you want
 set(test_prefix "pngenc_test")
 
