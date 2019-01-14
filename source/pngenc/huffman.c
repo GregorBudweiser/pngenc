@@ -343,7 +343,12 @@ int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
     if(sizeof(size_t) == 8) {
         return huffman_encoder_encode64_2(encoder, src, length, dst, offset);
     } else {
+#ifdef __arm__
+        // TODO: This is faster on arm than the 32bit version. What about x86?
+        return huffman_encoder_encode64_3(encoder, src, length, dst, offset);
+#else
         return huffman_encoder_encode32(encoder, src, length, dst, offset);
+#endif
     }
 }
 
@@ -409,6 +414,7 @@ int huffman_encoder_encode64_2(const huffman_encoder * encoder, const uint8_t * 
     }
 
     *offset = positionInBits;
+
     return PNGENC_SUCCESS;
 }
 
@@ -449,6 +455,7 @@ int huffman_encoder_encode64(const huffman_encoder * encoder, const uint8_t * sr
     }
 
     *offset = positionInBits;
+
     return PNGENC_SUCCESS;
 }
 
@@ -485,6 +492,7 @@ int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * sr
     }
 
     *offset = positionInBits;
+
     return PNGENC_SUCCESS;
 }
 
@@ -501,7 +509,6 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
     if(length <= padding) {
         return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
     }
-
     const uint64_t fastEnd = length - padding;
     uint8_t * start = (dst + (*offset >> 3));
     start = (uint8_t*)((uintptr_t)start & ~0x3); // 4-byte aligned (i.e. 32bit aligned)
@@ -513,9 +520,9 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
     for(; i < fastEnd; ) {
         // Add symbols until we have 32bits to write out
         while(positionInBits < 32) {
-            window |= encoder->symbols[src[i]] << positionInBits;
+            window |= (uint64_t)encoder->symbols[src[i]] << positionInBits;
             positionInBits += encoder->code_lengths[src[i]];
-            window |= encoder->symbols[src[i+1]] << positionInBits;
+            window |= (uint64_t)encoder->symbols[src[i+1]] << positionInBits;
             positionInBits += encoder->code_lengths[src[i+1]];
             i += 2;
         }
@@ -526,7 +533,6 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
         positionInBits &= 31;
     }
 
-
     *ptr = (uint32_t)window; // Write out remaining bits
     *(ptr+1) = 0; // Clear next 64bits to allow subsequent access via 64bit reads
     *(ptr+2) = 0;
@@ -534,7 +540,7 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
 
     // Padding
     for(; i < length; i++) {
-        *((uint64_t*)(dst+(positionInBits>>3))) |= encoder->symbols[src[i]]
+        *((uint64_t*)(dst+(positionInBits>>3))) |= (uint64_t)encoder->symbols[src[i]]
                                                 << (positionInBits & 0x7);
         positionInBits += encoder->code_lengths[src[i]];
     }
@@ -551,8 +557,8 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     size_t i = 0;
     for(; i < length; i++) {
         uint8_t current_byte = src[i];
-        uint16_t symbol = encoder->symbols[current_byte];
-        *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+        uint32_t symbol = encoder->symbols[current_byte];
+        *((uint32_t*)(dst+(positionInBits>>3))) |= symbol
                                                 << (positionInBits & 0x7);
         positionInBits += encoder->code_lengths[src[i]];
     }
@@ -572,8 +578,8 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
         uint16_t current_byte = src[i];
         // Handle literals (and literal part of matches)
         {
-            uint16_t symbol = encoder_hist->symbols[current_byte];
-            *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
+            uint32_t symbol = encoder_hist->symbols[current_byte];
+            *((uint32_t*)(dst+(positionInBits>>3))) |= symbol
                                                     << (positionInBits & 0x7);
             positionInBits += encoder_hist->code_lengths[src[i]];
         }

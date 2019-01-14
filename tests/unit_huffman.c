@@ -1,9 +1,11 @@
 #include <string.h>
 #include <malloc.h>
+#include <stdlib.h>
 #include "common.h"
 #include "../source/pngenc/huffman.h"
 
-#define N 1024
+#define C 3
+#define N 1024*1024
 #define CODE_LENGTH_LIMIT 15
 
 int test_huffman_build_histogram() {
@@ -71,57 +73,61 @@ int test_huffman_build_tree() {
 }
 
 int test_huffman_encode() {
+    const int OFFSET = 345;
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
 
     // Setup encoder
     uint8_t src[N];
     int i;
+    srand(1234);
     for(i = 0; i < N; i++) {
-        src[i] = (uint8_t)i;
+        src[i] = (uint8_t)rand();
     }
     huffman_encoder_add(encoder.histogram, src, N);
-    huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95);
+    encoder.histogram[256] = 1;
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
     // Compute reference using simple shifting algorithm
     uint64_t ref_offset;
     uint8_t ref[2*N];
-    memset(ref, 0, N);
-    ref_offset = 0;
-    huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset);
+    memset(ref, 0, 2*N);
+    ref_offset = OFFSET;
+    RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset));
 
     // Compare optimized versions
     {
         uint64_t offset;
         uint8_t dst[2*N];
-        memset(dst, 0, N);
-        offset = 0;
-        huffman_encoder_encode64(&encoder, src, N, dst, &offset);
+        memset(dst, 0, 2*N);
+        offset = OFFSET;
+        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src, N, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
     }
 
     {
         uint64_t offset;
         uint8_t dst[2*N];
-        memset(dst, 0, N);
-        offset = 0;
-        huffman_encoder_encode64_2(&encoder, src, N, dst, &offset);
+        memset(dst, 0, 2*N);
+        offset = OFFSET;
+        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src, N, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
     }
 
     {
         uint64_t offset;
         uint8_t dst[2*N];
-        memset(dst, 0, N);
-        offset = 0;
-        huffman_encoder_encode64_3(&encoder, src, N, dst, &offset);
+        memset(dst, 0, 2*N);
+        offset = OFFSET;
+        RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
     }
     return 0;
 }
@@ -136,15 +142,20 @@ int test_huffman_encode_multi() {
     for(i = 0; i < N; i++) {
         src[i] = (uint8_t)i;
     }
+    for(i = N; i > C; i--) {
+        src[i] = src[i] - src[i-3];
+    }
+
     huffman_encoder_add(encoder.histogram, src, N);
-    huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95);
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
     // Compute reference using simple shifting algorithm
     uint64_t ref_offset;
     uint8_t ref[2*N];
     memset(ref, 0, N);
     ref_offset = 0;
-    huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset);
+    RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset));
 
     // Check we get the same when encoding is split up into two steps
     {
@@ -152,8 +163,8 @@ int test_huffman_encode_multi() {
         uint8_t dst[2*N];
         memset(dst, 0, N);
         offset = 0;
-        huffman_encoder_encode64(&encoder, src, N/2+3, dst, &offset);
-        huffman_encoder_encode64(&encoder, src+N/2+3, N/2-3, dst, &offset);
+        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src, N/2+3, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src+N/2+3, N/2-3, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
         ASSERT_TRUE(memcmp(ref, dst, N) == 0);
@@ -164,8 +175,8 @@ int test_huffman_encode_multi() {
         uint8_t dst[2*N];
         memset(dst, 0, N);
         offset = 0;
-        huffman_encoder_encode64_2(&encoder, src, N/2+3, dst, &offset);
-        huffman_encoder_encode64_2(&encoder, src+N/2+3, N/2-3, dst, &offset);
+        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src, N/2+3, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src+N/2+3, N/2-3, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
         ASSERT_TRUE(memcmp(ref, dst, N) == 0);
@@ -176,8 +187,9 @@ int test_huffman_encode_multi() {
         uint8_t dst[2*N];
         memset(dst, 0, N);
         offset = 0;
-        huffman_encoder_encode64_3(&encoder, src, N/2+3, dst, &offset);
-        huffman_encoder_encode64_3(&encoder, src+N/2+3, N/2-3, dst, &offset);
+        RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N/2+3, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src+N/2+3, 20, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src+N/2+23, N/2-23, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
         ASSERT_TRUE(memcmp(ref, dst, N) == 0);
