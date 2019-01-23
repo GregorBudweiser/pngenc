@@ -17,6 +17,8 @@ void huffman_encoder_add32(uint32_t *histogram, const uint8_t * symbols,
                            uint32_t length);
 void huffman_encoder_add64(uint32_t *histogram, const uint8_t * symbols,
                            uint32_t length);
+void huffman_encoder_add64_2(uint32_t *histogram, const uint8_t * symbols,
+                             uint32_t length);
 void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
                                 uint32_t length);
 int huffman_encoder_build_tree(huffman_encoder * encoder);

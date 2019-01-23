@@ -16,3 +16,4 @@ typedef struct _pngenc_node_deflate {
 int node_deflate_init(pngenc_node_deflate * node,
                       pngenc_compression_strategy strategy);
 void node_destroy_deflate(pngenc_node_deflate * node);
+void node_deflate_clear_output_buffer(pngenc_node_deflate * node);

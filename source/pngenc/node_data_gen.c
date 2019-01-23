@@ -49,6 +49,7 @@ int64_t write_data_generator(struct _pngenc_node * n, const uint8_t * data,
                 const uint8_t * src = image->data + y*image->row_stride;
                 const uint64_t length = node->base.buf_size;
                 uint8_t * dst = (uint8_t*)node->base.buf;
+
                 uint64_t i;
                 for(i = 0; i < c; i++)
                     dst[i] = src[i];
@@ -98,4 +99,22 @@ int64_t init_data_generator(struct _pngenc_node * node) {
 
 void node_destroy_data_generator(pngenc_node_data_gen *node) {
     free(node->base.buf);
+}
+
+int node_data_generator_set_image_desc(pngenc_node_data_gen *node,
+                                       const pngenc_image_desc * descriptor) {
+    if (descriptor == NULL)
+        return PNGENC_SUCCESS;
+
+    if (descriptor->width != node->image->width
+            || descriptor->height != node->image->height
+            || descriptor->bit_depth != node->image->bit_depth
+            || descriptor->num_channels != node->image->num_channels
+            || descriptor->strategy != node->image->strategy)
+    {
+        node->image = descriptor;
+        return PNGENC_ERROR_INVALID_ARG;
+    }
+
+    return PNGENC_SUCCESS;
 }

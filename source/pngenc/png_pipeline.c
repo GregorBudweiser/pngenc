@@ -32,9 +32,10 @@ int png_encoder_pipeline_init(pngenc_pipeline pipeline,
 }
 
 int png_encoder_pipeline_write(pngenc_pipeline pipeline,
-                               const pngenc_image_desc * descriptor,
-                               void * user_data) {
-    //RETURN_ON_ERROR(node_data_generator_init()) // TODO: update source..
+                               const pngenc_image_desc * descriptor) {
+    RETURN_ON_ERROR(node_data_generator_set_image_desc(
+                        &pipeline->node_data_gen, descriptor));
+    node_deflate_clear_output_buffer(&pipeline->node_deflate);
     RETURN_ON_ERROR(node_write((pngenc_node*)&pipeline->node_data_gen, 0, 1));
     RETURN_ON_ERROR(node_finish((pngenc_node*)&pipeline->node_data_gen));
     return PNGENC_SUCCESS;

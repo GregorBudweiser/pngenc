@@ -34,6 +34,10 @@ int64_t dynamic_huffman_header(pngenc_node_deflate * node,
 int64_t dynamic_huffman_header_full(pngenc_node_deflate * node,
                                     uint64_t *bit_offset);
 
+void node_deflate_clear_output_buffer(pngenc_node_deflate * node) {
+    memset(node->compressed_buf, 0, node->base.buf_size*2 + 2048);
+}
+
 int node_deflate_init(pngenc_node_deflate * node,
                       pngenc_compression_strategy strategy) {
     node->strategy = strategy;
@@ -197,6 +201,10 @@ int64_t finish_deflate_compressed(struct _pngenc_node * n) {
     uint32_t adler_checksum = swap_endianness32(
                 adler_get_checksum(&node->adler));
     RETURN_ON_ERROR(node_write(node->base.next, (uint8_t*)&adler_checksum, 4));
+
+    // reset state/cleanup (only needed in pipeline)
+    adler_init(&node->adler);
+    node->bit_offset = 0;
 
     // .. and we're done!
     return PNGENC_SUCCESS;

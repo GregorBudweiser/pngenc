@@ -20,6 +20,8 @@ int png_encoder_pipeline_init(pngenc_pipeline pipeline,
                               pngenc_user_write_callback callback,
                               void *user_data);
 
+/**
+ *  @param descriptor: May be NULL. If not the desciptor must match the format of the pipeline setup.
+ */
 int png_encoder_pipeline_write(pngenc_pipeline pipeline,
-                               const pngenc_image_desc * descriptor,
-                               void * user_data);
+                               const pngenc_image_desc * descriptor);

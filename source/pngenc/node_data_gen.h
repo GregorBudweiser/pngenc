@@ -11,3 +11,12 @@ int node_data_generator_init(pngenc_node_data_gen * node,
                              const pngenc_image_desc * image);
 void node_destroy_data_generator(pngenc_node_data_gen * node);
 
+/**
+ * Used when running in a pipeline, the user can set another descriptor.
+ * @param descriptor: May be NULL. If not it must have the same image format
+ *                    and compression strategy than the one previously
+ *                    used by the pipeline.
+ */
+int node_data_generator_set_image_desc(pngenc_node_data_gen * node,
+                                       const pngenc_image_desc * descriptor);
+

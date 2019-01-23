@@ -159,8 +159,7 @@ int pngenc_pipeline_write(pngenc_pipeline pipeline,
     RETURN_ON_ERROR(check_descriptor(descriptor));
     RETURN_ON_ERROR(write_ihdr(descriptor, pipeline->node_user.custom_data1, user_data));
     RETURN_ON_ERROR(node_init((pngenc_node*)&pipeline->node_data_gen));
-    RETURN_ON_ERROR(png_encoder_pipeline_write(pipeline, descriptor,
-                                               user_data));
+    RETURN_ON_ERROR(png_encoder_pipeline_write(pipeline, descriptor));
     RETURN_ON_ERROR(write_iend(pipeline->node_user.custom_data1, user_data));
     return PNGENC_SUCCESS;
 }
