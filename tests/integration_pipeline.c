@@ -1,6 +1,7 @@
 #include "common.h"
 #include <pngenc/pngenc.h>
 #include "pngenc/callback.h"
+#include "string.h"
 
 int integration_pipeline(int argc, char* argv[]) {
 
@@ -33,6 +34,13 @@ int integration_pipeline(int argc, char* argv[]) {
     desc.bit_depth = 8;
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
 
+    uint8_t * copies[8];
+    copies[0] = buf;
+    for (int i = 1; i < 8; i++) {
+        copies[i] = (uint8_t*)malloc(W*H*C);
+        memcpy(copies[i], buf, W*H*C);
+    }
+
     pngenc_pipeline pipeline;
     pipeline = pngenc_pipeline_create(&desc, &write_to_file_callback, NULL);
 
@@ -49,6 +57,7 @@ int integration_pipeline(int argc, char* argv[]) {
     }
 
     for(int i = 0; i < 20; i++) {
+        desc.data = copies[i % 8];
         TIMING_START;
         pngenc_pipeline_write(pipeline, &desc, file);
         TIMING_END;
@@ -57,6 +66,7 @@ int integration_pipeline(int argc, char* argv[]) {
     printf("---\n");
 
     for(int i = 0; i < 20; i++) {
+        desc.data = copies[i % 8];
         TIMING_START;
         pngenc_write_file(&desc, devNull);
         TIMING_END;

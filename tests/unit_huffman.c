@@ -177,7 +177,7 @@ int test_huffman_encode_multi() {
 
     {
         uint64_t offset;
-        memset(dst, 0, 2*N);
+        //memset(dst, 0, 2*N); // Does not need output memory to be cleared
         offset = 0;
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N/2+3, dst, &offset));
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src+N/2+3, 20, dst, &offset));

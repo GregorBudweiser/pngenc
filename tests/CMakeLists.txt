@@ -31,6 +31,7 @@ create_test(unit_huffman)
 create_test(unit_crc)
 create_test(unit_matcher)
 create_test(unit_deflate)
+create_test(unit_pipeline)
 
 # Integration tests
 create_test(integration_save_png)
