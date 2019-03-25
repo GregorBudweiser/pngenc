@@ -5,13 +5,41 @@
 #include "utils.h"
 #include <string.h>
 #include <stdio.h>
-
+#include <omp.h>
 
 // TODO: Make dynamic
 const static uint32_t TARGET_BLOCK_SIZE = 1000000;
 
 static uint8_t my_tmp[1024*1024];
 static uint8_t my_buf[1024*1024*10];
+
+static uint8_t my_tmps[8][2*1000*1000];
+static uint8_t my_dsts[8][2*1000*1000];
+
+/*
+ * Taken and adapted from zlib
+ */
+const static int BASE = 65521U;
+uint32_t adler32_combine(uint32_t adler1, uint32_t adler2, size_t len2)
+{
+    uint32_t sum1;
+    uint32_t sum2;
+    uint32_t rem;
+
+    /* the derivation of this formula is left as an exercise for the reader */
+    len2 %= BASE;                /* assumes len2 >= 0 */
+    rem = (uint32_t)len2;
+    sum1 = adler1 & 0xffff;
+    sum2 = rem * sum1;
+    sum2 %= BASE;
+    sum1 += (adler2 & 0xffff) + BASE - 1;
+    sum2 += ((adler1 >> 16) & 0xffff) + ((adler2 >> 16) & 0xffff) + BASE - rem;
+    if (sum1 >= BASE) sum1 -= BASE;
+    if (sum1 >= BASE) sum1 -= BASE;
+    if (sum2 >= ((unsigned long)BASE << 1)) sum2 -= ((unsigned long)BASE << 1);
+    if (sum2 >= BASE) sum2 -= BASE;
+    return sum1 | (sum2 << 16);
+}
 
 /**
  * In case of compression
@@ -237,32 +265,112 @@ int64_t process(const pngenc_image_desc * desc, uint32_t yStart,
     return (int64_t)(dst - idat_ptr);
 }
 
-int64_t split(const pngenc_image_desc * desc, uint8_t * dst) {
-    const uint8_t * const old_dst = dst;
-
-    // TODO: Assert alignment and size
-    uint8_t * tmp = my_tmp; //(uint8_t*)malloc(2*TARGET_BLOCK_SIZE); // pick a safe upper bound
-
-    //uint8_t * dst = (uint8_t*)malloc(2*TARGET_BLOCK_SIZE); // pick a safe upper bound
-    //memset(tmp, 0, 2*TARGET_BLOCK_SIZE);
+int64_t split(const pngenc_image_desc * desc, uint8_t * final_dst) {
+    const uint8_t * const old_dst = final_dst;
 
     pngenc_adler32 sum;
     adler_init(&sum);
     uint32_t num_rows = TARGET_BLOCK_SIZE/desc->row_stride + 1;
     uint32_t y;
-    int64_t result;
+
+    //omp_set_num_threads(1);
+    //printf("Num Threads: %d\n", omp_get_num_threads());
+    //printf("Num Threads: %d\n", omp_get_max_threads());
+
+#pragma omp parallel
+#pragma omp for ordered
     for(y = 0; y < desc->height; y += num_rows) {
         uint32_t yNext = min_u32(y+num_rows, desc->height);
-        memset(tmp, 0, sizeof(my_tmp));
-        if((result = process(desc, y, yNext, dst, tmp, &sum)) < 0) {
-            return result;
+
+        // buffers...
+        uint8_t * tmp = my_tmps[omp_get_thread_num()];
+        memset(tmp, 0, 2*1000*1000);
+        uint8_t * dst = my_dsts[omp_get_thread_num()];
+        memset(dst, 0, 2*1000*1000);
+
+        pngenc_adler32 local_sum;
+        adler_init(&local_sum);
+        uint32_t num_bytes;
+        int64_t result;
+        uint8_t * const idat_ptr = dst;
+        {
+            uint32_t yStart = y;
+            uint32_t yEnd = yNext;
+
+            // prepare data
+            num_bytes = prepare_data(desc, yStart, yEnd, tmp);
+
+            // update adler
+            adler_update(&local_sum, tmp, num_bytes);
+
+            // Idat hdr (part I)
+            struct idat_header {
+                uint32_t size;
+                uint8_t name[4];
+            } hdr = {
+                0,
+                { 'I', 'D', 'A', 'T' }
+            };
+            dst += sizeof(hdr); // advance destination pointer
+
+            // compress: zlib-deflate-block, zlib-uncompressed-0-block (zflush)
+            result = write_deflate_block_compressed(dst, tmp, num_bytes, 0);
+
+            // TODO: Fix
+            //if(result < 0)
+            //    return result;
+
+            dst += result;
+
+            // Idat hdr (part II)
+            hdr.size = swap_endianness32((uint32_t)result);
+            memcpy(idat_ptr, &hdr, 8);
+
+            // Idat end/checksum (starts with crc("IDAT"))
+            uint32_t crc = crc32c(0xCA50F9E1, idat_ptr+8, (size_t)result);
+            crc = swap_endianness32(crc ^ 0xFFFFFFFF);
+            memcpy(dst, &crc, 4);
+            dst += 4;
+
+            // number of bytes: Idat hdr + data + checksum
+            result = (int64_t)(dst - idat_ptr);
         }
-        dst += result;
+
+#pragma omp ordered
+        {
+            memcpy(final_dst, idat_ptr, (size_t)result);
+            final_dst += result;
+
+            // update adler
+            uint32_t comb = adler32_combine(adler_get_checksum(&sum),
+                                            adler_get_checksum(&local_sum),
+                                            num_bytes);
+            adler_set_checksum(&sum, comb);
+        }
     }
-    //free(tmp);
+
+    // write adler checksum in its own idat block
+    struct idat_header {
+        uint32_t size;
+        uint8_t name[4];
+    } hdr = {
+        4,
+        { 'I', 'D', 'A', 'T' }
+    };
+    final_dst += sizeof(hdr); // advance destination pointer
+    memcpy(final_dst, &hdr, 8);
+
+    uint32_t adler_checksum = swap_endianness32(adler_get_checksum(&sum)); // <-- this works
+    memcpy(final_dst, &adler_checksum, 4);
+
+    uint32_t crc = crc32c(0xCA50F9E1, final_dst, 4);
+    crc = swap_endianness32(crc ^ 0xFFFFFFFF);
+    final_dst += 4;
+    memcpy(final_dst, &crc, 4);
+    final_dst += 4;
 
     // number of bytes
-    return dst - old_dst;
+    return final_dst - old_dst;
 }
 
 pngenc_result write_png(const pngenc_image_desc * desc,

@@ -5,6 +5,12 @@ uint32_t adler_get_checksum(const pngenc_adler32 * adler) {
     return (adler->s2 << 16) | adler->s1;
 }
 
+
+void adler_set_checksum(pngenc_adler32 * adler, uint32_t checksum) {
+    adler->s1 = checksum & 0xFF;
+    adler->s2 = checksum >> 16;
+}
+
 void adler_init(pngenc_adler32 * adler) {
     adler->s1 = 1;
     adler->s2 = 0;
