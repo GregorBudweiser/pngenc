@@ -30,7 +30,7 @@ typedef enum _pngenc_result {
 
 typedef struct _pngenc_image_desc {
     const uint8_t * data;
-    uint64_t row_stride;
+    uint32_t row_stride;
     uint32_t width;
     uint32_t height;
     pngenc_compression_strategy strategy;

@@ -94,7 +94,6 @@ int64_t finish_idat(struct _pngenc_node * n) {
         RETURN_ON_ERROR(node_write(node->base.next, node->base.buf,
                                    node->base.buf_pos));
 
-
         // finally write the checksum
         uint32_t crc32 = node->crc ^ 0xFFFFFFFF;
         crc32 = swap_endianness32(crc32);
