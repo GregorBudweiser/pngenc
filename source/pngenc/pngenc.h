@@ -44,6 +44,15 @@ typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,
 struct _pngenc_pipeline;
 typedef struct _pngenc_pipeline* pngenc_pipeline;
 
+
+struct _pngenc_encoder {
+    uint32_t num_threads;
+    uint32_t buffer_size; // multiple of 64
+    uint8_t * tmp_buffers; // ptr to first buffer; must align to 64 bytes
+    uint8_t * dst_buffers; // ptr to first buffer; must align to 64 bytes
+};
+typedef struct _pngenc_encoder* pngenc_encoder;
+
 /**
  * Simply write png to specified file.
  */
@@ -66,7 +75,26 @@ pngenc_pipeline pngenc_pipeline_create(const pngenc_image_desc * descriptor,
 
 PNGENC_API
 int pngenc_pipeline_write(pngenc_pipeline pipeline,
-                          const pngenc_image_desc * descriptor, void *user_data);
+                          const pngenc_image_desc * descriptor,
+                          void *user_data);
 
 PNGENC_API
 int pngenc_pipeline_destroy(pngenc_pipeline pipeline);
+
+
+PNGENC_API
+pngenc_encoder pngenc_create_encoder();
+
+PNGENC_API
+int pngenc_write(pngenc_encoder encoder,
+                 const pngenc_image_desc * descriptor,
+                 const char * file);
+
+PNGENC_API
+int pngenc_encode(pngenc_encoder encoder,
+                  const pngenc_image_desc * descriptor,
+                  pngenc_user_write_callback callback,
+                  void *user_data);
+
+PNGENC_API
+void pngenc_destroy_encoder(pngenc_encoder encoder);

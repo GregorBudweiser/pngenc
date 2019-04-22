@@ -1,4 +1,5 @@
 #include "pngenc.h"
+#include "splitter.h"
 #include "image_descriptor.h"
 #include "utils.h"
 #include "crc32.h"
@@ -12,6 +13,7 @@
 #include "png_pipeline.h"
 #include <stdio.h>
 #include <assert.h>
+#include <omp.h>
 
 int write_ihdr(const pngenc_image_desc * descriptor,
                pngenc_user_write_callback callback, void * user_data);
@@ -187,4 +189,45 @@ int write_iend(pngenc_user_write_callback callback, void * user_data) {
     RETURN_ON_ERROR(callback((void*)&iend, 8+4, user_data));
 
     return PNGENC_SUCCESS;
+}
+
+pngenc_encoder pngenc_create_encoder() {
+    pngenc_encoder encoder =
+            (pngenc_encoder)malloc(sizeof(struct _pngenc_encoder));
+    encoder->num_threads = (uint32_t)omp_get_max_threads();
+    encoder->buffer_size = 1024*1024; // 2 MB
+    encoder->tmp_buffers = malloc(2ULL * encoder->buffer_size
+                                  * encoder->num_threads);
+    encoder->dst_buffers = malloc(2ULL * encoder->buffer_size
+                                  * encoder->num_threads);
+    return encoder;
+}
+
+int pngenc_write(pngenc_encoder encoder,
+                 const pngenc_image_desc * descriptor,
+                 const char * filename) {
+    FILE * file = fopen(filename, "wb");
+    if (!file)
+        return PNGENC_ERROR_FILE_IO;
+
+    int result = pngenc_encode(encoder, descriptor, write_to_file_callback, file);
+    fclose(file);
+    return result;
+}
+
+
+int pngenc_encode(pngenc_encoder encoder,
+                  const pngenc_image_desc * descriptor,
+                  pngenc_user_write_callback callback,
+                  void *user_data) {
+
+    write_png(encoder, descriptor, callback, user_data);
+
+    return PNGENC_ERROR;
+}
+
+void pngenc_destroy_encoder(pngenc_encoder encoder) {
+    free(encoder->tmp_buffers);
+    free(encoder->dst_buffers);
+    free(encoder);
 }

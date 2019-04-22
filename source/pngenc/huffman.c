@@ -341,7 +341,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t * offset) {
     if(sizeof(size_t) == 8) {
-        return huffman_encoder_encode64_2(encoder, src, length, dst, offset);
+        return huffman_encoder_encode64_3(encoder, src, length, dst, offset);
     } else {
 #ifdef __arm__
         // TODO: This is faster on arm than the 32bit version. What about x86?

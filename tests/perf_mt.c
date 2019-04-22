@@ -34,16 +34,19 @@ int perf_mt(int argc, char* argv[]) {
     desc.strategy = PNGENC_NO_COMPRESSION;
     desc.bit_depth = 8;
 
+    pngenc_encoder encoder = pngenc_create_encoder();
 
-    write_png(&desc, "C:\\Users\\RTFM2\\Desktop\\test.png");
+    pngenc_write(encoder, &desc, "C:\\Users\\RTFM2\\Desktop\\test.png");
 
     for(int i = 0; i < 10; i++) {
         TIMING_START;
-        write_png(&desc, "nul");
+        pngenc_write(encoder, &desc, "nul");
         TIMING_END;
     }
 
     free(buf);
+
+    pngenc_destroy_encoder(encoder);
 
     return 0;
 }

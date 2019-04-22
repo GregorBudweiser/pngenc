@@ -28,18 +28,18 @@ uint32_t swap_endianness32(uint32_t value);
 #ifndef NDEBUG
 #define RETURN_ON_ERROR(expr) \
 { \
-    int result = (int)expr; \
-    if(result) { \
+    int __result = (int)expr; \
+    if(__result) { \
         printf("Returning on error: %s:%d: %s\n", __FILE__, __LINE__, #expr); \
-        return result; \
+        return __result; \
     } \
 }
 #else
 #define RETURN_ON_ERROR(expr) \
 { \
-    int result = (int)expr; \
-    if(result) { \
-        return result; \
+    int __result = (int)expr; \
+    if(__result) { \
+        return __result; \
     } \
 }
 #endif

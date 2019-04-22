@@ -1,32 +1,10 @@
-set(pngenc_sources
-    "adler32.h"
-    "adler32.c"
-    "callback.h"
-    "callback.c"
-    "crc32.h"
-    "crc32.c"
-    "huffman.h"
-    "huffman.c"
-    "matcher.h"
-    "matcher.c"
-    "image_descriptor.h"
-    "image_descriptor.c"
-    "node.h"
-    "node.c"
-    "node_custom.h"
-    "node_data_gen.h"
-    "node_data_gen.c"
-    "node_deflate.h"
-    "node_deflate.c"
-    "node_idat.h"
-    "node_idat.c"
-    "png_pipeline.h"
-    "png_pipeline.c"
-    "pngenc.h"
-    "pngenc.c"
-    "utils.h"
-    "utils.c"
-)
+file(GLOB pngenc_sources "*.c" "*.h")
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/main.c")
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/java.h")
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/java.c")
+list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/iacaMarks.h")
+
+#message(STATUS ${pngenc_sources})
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /DPNGENC_EXPORT=1")
