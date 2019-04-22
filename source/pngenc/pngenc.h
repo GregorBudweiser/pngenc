@@ -46,7 +46,7 @@ typedef struct _pngenc_pipeline* pngenc_pipeline;
 
 
 struct _pngenc_encoder {
-    uint32_t num_threads;
+    int32_t num_threads;
     uint32_t buffer_size; // multiple of 64
     uint8_t * tmp_buffers; // ptr to first buffer; must align to 64 bytes
     uint8_t * dst_buffers; // ptr to first buffer; must align to 64 bytes

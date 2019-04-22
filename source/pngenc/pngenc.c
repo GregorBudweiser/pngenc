@@ -194,12 +194,12 @@ int write_iend(pngenc_user_write_callback callback, void * user_data) {
 pngenc_encoder pngenc_create_encoder() {
     pngenc_encoder encoder =
             (pngenc_encoder)malloc(sizeof(struct _pngenc_encoder));
-    encoder->num_threads = (uint32_t)omp_get_max_threads();
+    encoder->num_threads = omp_get_max_threads();
     encoder->buffer_size = 1024*1024; // 2 MB
     encoder->tmp_buffers = malloc(2ULL * encoder->buffer_size
-                                  * encoder->num_threads);
+                                  * (uint32_t)encoder->num_threads);
     encoder->dst_buffers = malloc(2ULL * encoder->buffer_size
-                                  * encoder->num_threads);
+                                  * (uint32_t)encoder->num_threads);
     return encoder;
 }
 
