@@ -13,12 +13,12 @@
 /**
  * In case of compression
  */
-uint32_t prepare_data(const pngenc_image_desc * image,
-                      uint32_t yStart, uint32_t yEnd, uint8_t * dst) {
+uint32_t prepare_data_filtered(const pngenc_image_desc * image,
+                               uint32_t yStart, uint32_t yEnd, uint8_t * dst) {
     // TODO: Check that output is less than 4 GB
     uint64_t y;
     const uint64_t length = image->width * image->num_channels
-                          * image->bit_depth / 8;
+                          * (image->bit_depth / 8);
     for(y = yStart; y < yEnd; y++) {
         *dst++ = 1; // row filter
         if(image->bit_depth == 8) {
@@ -58,6 +58,24 @@ uint32_t prepare_data(const pngenc_image_desc * image,
                             * image->bit_depth / 8 + 1);
 }
 
+uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
+                                 uint32_t yStart, uint32_t yEnd,
+                                 uint8_t * dst) {
+    // TODO: Check that output is less than 4 GB
+    uint64_t y;
+    const uint32_t length = image->width * image->num_channels
+                          * (image->bit_depth / 8);
+    for(y = yStart; y < yEnd; y++) {
+        *dst++ = 0; // row filter
+        const uint8_t * src = image->data + y*image->row_stride;
+        memcpy(dst, src, length);
+        dst +=length;
+    }
+
+    return (yEnd - yStart)*(length + 1);
+}
+
+
 int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
               pngenc_user_write_callback callback, void * user_data) {
 
@@ -75,11 +93,11 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     for(y = 0; y < desc->height; y += num_rows) {
         uint32_t yNext = min_u32(y+num_rows, desc->height);
 
-        // buffers...
+        // intermediate result buffers
         uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
-        memset(tmp, 0, 2*encoder->buffer_size);
+        //memset(tmp, 0, 2*encoder->buffer_size);
         uint8_t * dst = encoder->dst_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
-        memset(dst, 0, 2*encoder->buffer_size);
+        //memset(dst, 0, 2*encoder->buffer_size);
 
         pngenc_adler32 local_sum;
         adler_init(&local_sum);
@@ -91,7 +109,9 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
             uint32_t yEnd = yNext;
 
             // prepare data
-            num_bytes = prepare_data(desc, yStart, yEnd, tmp);
+            num_bytes = desc->strategy == PNGENC_NO_COMPRESSION
+                    ? prepare_data_unfiltered(desc, yStart, yEnd, tmp)
+                    : prepare_data_filtered(desc, yStart, yEnd, tmp);
 
             // update adler
             adler_update(&local_sum, tmp, num_bytes);
@@ -101,7 +121,9 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
             dst += sizeof(hdr); // advance destination pointer
 
             // compress: zlib-deflate-block, zlib-uncompressed-0-block (zflush)
-            result = write_deflate_block_compressed(dst, tmp, num_bytes, 0);
+            result = desc->strategy == PNGENC_NO_COMPRESSION
+                    ? write_deflate_block_uncompressed(dst, tmp, num_bytes)
+                    : write_deflate_block_compressed(dst, tmp, num_bytes, 0);
 
             // TODO: Fix
             //if(result < 0)

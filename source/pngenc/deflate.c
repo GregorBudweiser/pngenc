@@ -1,9 +1,15 @@
 #include "deflate.h"
 #include "huffman.h"
 #include "utils.h"
+#include <string.h>
 
 int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
                                        uint32_t num_bytes, uint8_t last_block) {
+    // clear dst memory for header
+    for (int i = 0; i < 287; i++) {
+        dst[i] = 0;
+    }
+
     // zlib header
     uint64_t bit_offset = 0;
 
@@ -128,4 +134,31 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
     *dst++ = 0xFF;
 
     return (int64_t)encoded_bytes + 4;
+}
+
+int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
+                                         uint32_t num_bytes) {
+    struct zlib_header {
+        uint8_t padding;
+        uint8_t b_type;
+        uint16_t len;
+        uint16_t nlen;
+    } hdr;
+
+    const uint8_t * old_dst = dst;
+
+    uint32_t i;
+    for(i = 0; i < num_bytes; i += 0xFFFF) {
+        uint16_t len = (uint16_t)min_u32(0xFFFF, num_bytes - i);
+        hdr.b_type = 0;
+        hdr.len = len;
+        hdr.nlen = ~len;
+        memcpy(dst, &hdr.b_type, 5); // write/cpy header
+        dst += 5;
+        memcpy(dst, src, len);
+        dst += len;
+        src += len;
+    }
+
+    return dst - old_dst;
 }
