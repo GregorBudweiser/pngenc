@@ -19,7 +19,6 @@ uint16_t swap_uint16(uint16_t val) {
  */
 uint32_t prepare_data_filtered(const pngenc_image_desc * image,
                                uint32_t yStart, uint32_t yEnd, uint8_t * dst) {
-    // TODO: Check that output is less than 4 GB
     uint64_t y;
     const uint64_t length = image->width * image->num_channels
                           * (image->bit_depth / 8);
@@ -65,7 +64,6 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
 uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
                                  uint32_t yStart, uint32_t yEnd,
                                  uint8_t * dst) {
-    // TODO: Check that output is less than 4 GB
     uint64_t y;
     const uint32_t length = image->width * image->num_channels
                           * (image->bit_depth / 8);
@@ -87,6 +85,8 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     adler_init(&sum);
     uint32_t num_rows = encoder->buffer_size/desc->row_stride + 1;
     uint32_t y;
+
+    int32_t err = 0;
 
 #pragma omp parallel
 #pragma omp for ordered
@@ -125,9 +125,11 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
                     ? write_deflate_block_uncompressed(dst, tmp, num_bytes)
                     : write_deflate_block_compressed(dst, tmp, num_bytes, 0);
 
-            // TODO: Fix
-            //if(result < 0)
-            //    return result;
+            if(result < 0) {
+                err = 1;
+                continue;
+            }
+
             dst += result;
 
             // Idat hdr (part II)
@@ -156,12 +158,15 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
         }
     }
 
+    if (err) {
+        return PNGENC_ERROR;
+    }
+
     // write adler checksum in its own idat block
     uint32_t adler_checksum = swap_endianness32(adler_get_checksum(&sum));
     write_idat_block((uint8_t*)&adler_checksum, 4, callback, user_data);
 
-    // number of bytes
-    return 0; // TODO
+    return PNGENC_SUCCESS;
 }
 
 pngenc_result write_png(const pngenc_encoder encoder,
