@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <omp.h>
 
+uint16_t swap_uint16(uint16_t val) {
+    return (val << 8) | (val >> 8);
+}
+
 /**
  * In case of compression
  */
@@ -78,10 +82,6 @@ uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
 
 int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
               pngenc_user_write_callback callback, void * user_data) {
-
-    int old_num_threads = omp_get_num_threads();
-    omp_set_num_threads(encoder->num_threads);
-
 
     pngenc_adler32 sum;
     adler_init(&sum);
@@ -159,8 +159,6 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     // write adler checksum in its own idat block
     uint32_t adler_checksum = swap_endianness32(adler_get_checksum(&sum));
     write_idat_block((uint8_t*)&adler_checksum, 4, callback, user_data);
-
-    omp_set_num_threads(old_num_threads);
 
     // number of bytes
     return 0; // TODO

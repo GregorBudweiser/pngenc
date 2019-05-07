@@ -20,28 +20,28 @@ void perf_add(const uint8_t * src, uint8_t * dst) {
             volatile register uint64_t tmp = ((uint64_t*)src)[j];
             UNUSED(tmp);
         }
-        TIMING_END;
+        TIMING_END_MB(6);
     }
 
     printf("optimized\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
         huffman_encoder_add(encoder.histogram, src, C*W*H);
-        TIMING_END;
+        TIMING_END_MB((double)(W*H*C)/1e6);
     }
 
     printf("simple\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
         huffman_encoder_add_simple(encoder.histogram, src, C*W*H);
-        TIMING_END;
+        TIMING_END_MB((double)(W*H*C)/1e6);
     }
 
     printf("memset\n");
     for(i = 0; i < 5; i++) {
         TIMING_START;
         memset(dst, 0, C*W*H);
-        TIMING_END;
+        TIMING_END_MB((double)(W*H*C)/1e6);
     }
 }
 

@@ -31,7 +31,7 @@ int perf_mt(int argc, char* argv[]) {
     desc.height = H;
     desc.num_channels = C;
     desc.row_stride = (uint64_t)W*(uint64_t)C;
-    desc.strategy = PNGENC_NO_COMPRESSION;
+    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     desc.bit_depth = 8;
 
     pngenc_encoder encoder = pngenc_create_encoder();

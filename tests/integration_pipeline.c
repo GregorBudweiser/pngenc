@@ -2,8 +2,12 @@
 #include <pngenc/pngenc.h>
 #include "pngenc/callback.h"
 #include "string.h"
+#include <omp.h>
 
 int integration_pipeline(int argc, char* argv[]) {
+
+    UNUSED(argc);
+    UNUSED(argv);
 
     const int W = 1920;
     const int H = 1080;
@@ -23,7 +27,6 @@ int integration_pipeline(int argc, char* argv[]) {
         fread(buf, C, W*H, file);
         fclose(file);
     }
-    printf("Could not open output file!\n");
 
     pngenc_image_desc desc;
     desc.data = buf;
@@ -41,8 +44,6 @@ int integration_pipeline(int argc, char* argv[]) {
         memcpy(copies[i], buf, W*H*C);
     }
 
-    pngenc_pipeline pipeline;
-    pipeline = pngenc_pipeline_create(&desc, &write_to_file_callback, NULL);
 
 #if defined(WIN32) || defined(__WIN32)
     const char * devNull = "nul";
@@ -50,18 +51,14 @@ int integration_pipeline(int argc, char* argv[]) {
     const char * devNull = "/dev/null";
 #endif
 
-    FILE * file = fopen(devNull, "wb");
-    if (file == NULL) {
-        printf("Could not open output file!\n");
-        return PNGENC_ERROR_FILE_IO;
-    }
-
+    pngenc_encoder encoder = pngenc_create_encoder();
     for(int i = 0; i < 20; i++) {
         desc.data = copies[i % 8];
         TIMING_START;
-        pngenc_pipeline_write(pipeline, &desc, file);
+        pngenc_write(encoder, &desc, devNull);
         TIMING_END;
     }
+    pngenc_destroy_encoder(encoder);
 
     printf("---\n");
 
@@ -72,10 +69,6 @@ int integration_pipeline(int argc, char* argv[]) {
         TIMING_END;
     }
 
-    if(fclose(file) != 0)
-        return PNGENC_ERROR_FILE_IO;
-
-    pngenc_pipeline_destroy(pipeline);
     free(buf);
 
     return PNGENC_SUCCESS;

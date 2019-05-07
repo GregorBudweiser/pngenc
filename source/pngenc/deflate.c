@@ -2,6 +2,7 @@
 #include "huffman.h"
 #include "utils.h"
 #include <string.h>
+#include <assert.h>
 
 int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
                                        uint32_t num_bytes, uint8_t last_block) {
@@ -161,4 +162,16 @@ int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
     }
 
     return dst - old_dst;
+}
+
+void push_bits(uint64_t bits, uint64_t nbits, uint8_t * data,
+               uint64_t * bit_offset) {
+    assert(nbits < 41);
+
+    uint64_t local_offset = (*bit_offset) & 0x7;
+    uint8_t * local_data_ptr = data + ((*bit_offset) >> 3);
+    uint64_t local_data = *((uint64_t*)local_data_ptr);
+    local_data |= (bits << local_offset);
+    *((uint64_t*)local_data_ptr) = local_data;
+    *bit_offset = (*bit_offset) + nbits;
 }
