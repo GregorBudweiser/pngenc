@@ -61,6 +61,9 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
                             * image->bit_depth / 8 + 1);
 }
 
+/**
+ * Uncompressed path.
+ */
 uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
                                  uint32_t yStart, uint32_t yEnd,
                                  uint8_t * dst) {
@@ -77,9 +80,11 @@ uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
     return (yEnd - yStart)*(length + 1);
 }
 
-
-int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
-              pngenc_user_write_callback callback, void * user_data) {
+/**
+ * Main loop (parallel) over image rows
+ */
+int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
+          pngenc_user_write_callback callback, void * user_data) {
 
     pngenc_adler32 sum;
     adler_init(&sum);
@@ -148,7 +153,9 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
 #pragma omp ordered
         {
-            callback(idat_ptr, (uint32_t)result, user_data);
+            if(callback(idat_ptr, (uint32_t)result, user_data) < 0) {
+                err = 1;
+            }
 
             // update adler
             uint32_t comb = adler32_combine(adler_get_checksum(&sum),
@@ -164,7 +171,7 @@ int64_t split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
     // write adler checksum in its own idat block
     uint32_t adler_checksum = swap_endianness32(adler_get_checksum(&sum));
-    write_idat_block((uint8_t*)&adler_checksum, 4, callback, user_data);
+    RETURN_ON_ERROR(write_idat_block((uint8_t*)&adler_checksum, 4, callback, user_data));
 
     return PNGENC_SUCCESS;
 }
@@ -173,16 +180,13 @@ pngenc_result write_png(const pngenc_encoder encoder,
                         const pngenc_image_desc * desc,
                         pngenc_user_write_callback callback,
                         void * user_data) {
+    // sanity check of input
     RETURN_ON_ERROR(check_descriptor(desc));
 
-    // png header
-    write_png_header(desc, callback, user_data);
+    // actual work
+    RETURN_ON_ERROR(write_png_header(desc, callback, user_data));
+    RETURN_ON_ERROR(split(encoder, desc, callback, user_data));
+    RETURN_ON_ERROR(write_png_end(callback, user_data));
 
-    // png idat
-    int64_t result = split(encoder, desc, callback, user_data);
-    RETURN_ON_ERROR(result);
-
-    // png end
-    write_png_end(callback, user_data);
     return PNGENC_SUCCESS;
 }
