@@ -63,12 +63,11 @@ void huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
 void huffman_encoder_add64(uint32_t * histogram, const uint8_t * symbols,
                            uint32_t length) {
     // padd to 8 bytes
-    while(length < 0 && (((size_t)symbols) & 0x7) != 0) {
+    while(length > 0 && (((size_t)symbols) & 0x7) != 0) {
         histogram[*symbols]++;
         symbols++;
     }
 
-    //__attribute__((aligned(64)))
     uint16_t counters[4][256];
     memset(counters, 0, 4*256*2);
     uint64_t l8 = length/8;
@@ -113,7 +112,6 @@ void huffman_encoder_add32(uint32_t * histogram, const uint8_t * symbols,
         length--;
     }
 
-    //__attribute__((aligned(64)))
     uint16_t counters[4][256];
     memset(counters, 0, 4*256*2);
     uint32_t l8 = length/4;
@@ -163,7 +161,7 @@ int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
         for(int i = 0; i < HUFF_MAX_SIZE; i++) {
             if(encoder->histogram[i]) {
                 // nonlinearly reduce weight of nodes to lower max tree depth
-                uint32_t reduced = (uint32_t)pow(encoder->histogram[i], power);
+                uint32_t reduced = (uint32_t)(float)pow(encoder->histogram[i], power);
                 encoder->histogram[i] = max_u32(1, reduced);
             }
         }
@@ -497,10 +495,8 @@ int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * sr
 }
 
 /**
- * This function does not have unaligned memory writes like the other encode functions.
- * Measured by itself, this is the fastest one. But when combined with the other stuff
- * in the pipeline it tends to be outperformed by encode64_2.
- * TODO: Why?
+ * This function does not have unaligned memory writes like the other encode
+ * functions. Puts less pressure on MMU and scales better when parallelized.
  */
 int huffman_encoder_encode64_3(const huffman_encoder * encoder,
                                const uint8_t * src, uint32_t length,
@@ -511,7 +507,7 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
     }
     const uint64_t fastEnd = length - padding;
     uint8_t * start = (dst + (*offset >> 3));
-    start = (uint8_t*)((uintptr_t)start & ~0x3); // 4-byte aligned (i.e. 32bit aligned)
+    start = (uint8_t*)((uintptr_t)start & ~0x3ULL); // 4-byte aligned (i.e. 32bit aligned)
     uint64_t positionInBits = *offset & 31;      // Offset modulo 32
     uint32_t* ptr = (uint32_t*)start;            // Pointer to the current window
     uint64_t window = *ptr;
@@ -559,7 +555,7 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
         uint8_t current_byte = src[i];
         uint32_t symbol = encoder->symbols[current_byte];
         *((uint32_t*)(dst+(positionInBits>>3))) |= symbol
-                                                << (positionInBits & 0x7);
+                                                << (positionInBits & 0x7ULL);
         positionInBits += encoder->code_lengths[src[i]];
     }
 
@@ -580,7 +576,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
         {
             uint32_t symbol = encoder_hist->symbols[current_byte];
             *((uint32_t*)(dst+(positionInBits>>3))) |= symbol
-                                                    << (positionInBits & 0x7);
+                                                    << (positionInBits & 0x7ULL);
             positionInBits += encoder_hist->code_lengths[src[i]];
         }
 
@@ -593,7 +589,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                 uint16_t num_extra_bits = length_extra_bits >> 8;
                 uint16_t symbol = length_extra_bits & 0xFF;
                 *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
-                                                        << (positionInBits & 0x7);
+                                                        << (positionInBits & 0x7ULL);
                 positionInBits += num_extra_bits;
             }
 
@@ -603,7 +599,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                 uint16_t dist_code = src[i];
                 uint16_t symbol = encoder_dist->symbols[dist_code];
                 *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
-                                                        << (positionInBits & 0x7);
+                                                        << (positionInBits & 0x7ULL);
                 positionInBits += encoder_dist->code_lengths[src[i]];
 
                 // Handle extra bits of distance code
@@ -614,7 +610,7 @@ int huffman_encoder_encode_full_simple(const huffman_encoder * encoder_hist,
                     uint16_t num_extra_bits = dist_extra_bits >> 12;
                     uint16_t symbol = dist_extra_bits & mask;
                     *((uint64_t*)(dst+(positionInBits>>3))) |= symbol
-                                                            << (positionInBits & 0x7);
+                                                            << (positionInBits & 0x7ULL);
                     positionInBits += num_extra_bits;
                 }
             }
@@ -631,13 +627,13 @@ int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     for(int i = 0; i < HUFF_MAX_SIZE; i++) {
         max_value = max_u32(max_value, encoder->code_lengths[i]);
     }
-    return max_value;
+    return (int)max_value;
 }
 
 uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder) {
     for(int i = HUFF_MAX_SIZE-1; i >= 0; i--) {
         if(encoder->histogram[i] > 0) {
-            return i;
+            return (uint32_t)i;
         }
     }
     return 0;

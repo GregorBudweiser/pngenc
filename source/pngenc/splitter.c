@@ -11,7 +11,7 @@
 #include <omp.h>
 
 uint16_t swap_uint16(uint16_t val) {
-    return (val << 8) | (val >> 8);
+    return (uint16_t)(val << 8) | (uint16_t)(val >> 8);
 }
 
 /**
@@ -48,8 +48,8 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
             for(i = 0; i < c; i++)
                 dst16[i] = swap_uint16(src[i]);
 
-            // TODO: Alignment of dst broken becasue of row filter..
-            //       This will only work on x86
+            // TODO: Alignment of dst broken because of row filter..
+            //       This will only work on x86, ARMv7/ARM11 or newer
             for(i = c; i < length/2; i++)
                 dst16[i] = swap_uint16(src[i]) - swap_uint16(src[i-c]);
 

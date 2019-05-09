@@ -13,7 +13,7 @@ Pngenc is optimized for 64bit multicore machines such as x86_64 and ARM64 but co
 TYPICAL RUNTIMES
 ================
 24bit FullHD @ i7 860, 4C/8T (save to /dev/null):
- * Uncompressed: <5ms (~200Hz) 
+ * Uncompressed: <5ms (~200Hz)
  * Compressed: <9ms (>100Hz)
 
 COMPILE

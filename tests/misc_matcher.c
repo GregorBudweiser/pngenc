@@ -5,7 +5,8 @@
 #include <malloc.h>
 #include <string.h>
 
-uint64_t compress_full(uint8_t * buf, uint16_t * out, uint32_t size) {
+int compress_full(uint8_t * buf, uint16_t * out, uint32_t size,
+                  uint64_t * offset) {
 
     huffman_encoder encoder_hist;
     huffman_encoder encoder_dist;
@@ -15,36 +16,33 @@ uint64_t compress_full(uint8_t * buf, uint16_t * out, uint32_t size) {
     uint32_t out_length = 0;
     {
         TIMING_START;
-        RETURN_ON_ERROR(histogram(buf, size, encoder_hist.histogram,
-                                  encoder_dist.histogram, out, &out_length));
+        RETURN_ON_ERROR(histogram(buf, size, encoder_hist.histogram, encoder_dist.histogram, out, &out_length));
         TIMING_END;
     }
 
     {
         TIMING_START;
         RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_hist, 15, 0.95));
-        //RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_hist));
         TIMING_END;
     }
 
     {
         TIMING_START;
         RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder_dist, 15, 0.95));
-        //RETURN_ON_ERROR(huffman_encoder_build_tree(&encoder_dist));
         TIMING_END;
     }
 
-    uint64_t offset = 0;
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder_hist, &encoder_dist, out, out_length, buf, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode_full_simple(&encoder_hist, &encoder_dist, out, out_length, buf, offset));
         TIMING_END;
     }
 
-    return offset;
+    return 0;
 }
 
-uint64_t compress_huff_only(const uint8_t * buf, uint16_t * out, uint32_t size) {
+int compress_huff_only(const uint8_t * buf, uint16_t * out, uint32_t size,
+                       uint64_t * offset) {
     huffman_encoder encoder_hist;
     huffman_encoder_init(&encoder_hist);
     encoder_hist.histogram[256] = 1;
@@ -62,14 +60,13 @@ uint64_t compress_huff_only(const uint8_t * buf, uint16_t * out, uint32_t size) 
         TIMING_END;
     }
 
-    uint64_t offset = 0;
     {
         TIMING_START;
-        RETURN_ON_ERROR(huffman_encoder_encode(&encoder_hist, buf, size, out, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode(&encoder_hist, buf, size, (uint8_t*)out, offset));
         TIMING_END;
     }
 
-    return offset;
+    return 0;
 }
 
 
@@ -107,14 +104,14 @@ int misc_matcher(int argc, char* argv[]) {
         const int N = 6;
         uint64_t offset = 0;
         for(i = 0; i < N; i++) {
-            offset += compress_huff_only(buf + i*W*H*C/N, out, W*H*C/N-1);
+            RETURN_ON_ERROR(compress_huff_only(buf + i*W*H*C/N, out, W*H*C/N-1, &offset));
         }
         TIMING_END;
         printf("out_length: %d/%d => %.02f%%\n",
-               (int)offset/8, C*W*H, 100.0f*(float)(offset/8)/(float)(C*W*H));
+               (int)offset/8, C*W*H, 100.0*(double)(offset/8)/(double)(C*W*H));
 
         printf("Expected: %d/%d => %.02f%%\n",
-               (int)3700000, 6200000, 100.0f*(float)3700000/(float)(6200000));
+               (int)3700000, 6200000, 100.0*(double)3700000/(double)(6200000));
     }
 
     memset(out, 0, W*H*C*sizeof(uint16_t));
@@ -123,14 +120,14 @@ int misc_matcher(int argc, char* argv[]) {
         const int N = 6;
         uint64_t offset = 0;
         for(i = 0; i < N; i++) {
-            offset += compress_full(buf + i*W*H*C/N, out, W*H*C/N-1);
+            RETURN_ON_ERROR(compress_full(buf + i*W*H*C/N, out, W*H*C/N-1, &offset));
         }
         TIMING_END;
         printf("out_length: %d/%d => %.02f%%\n",
-               (int)offset/8, C*W*H, 100.0f*(float)(offset/8)/(float)(C*W*H));
+               (int)offset/8, C*W*H, 100.0*(double)(offset/8)/(double)(C*W*H));
     }
 
-    printf("libpng target (@163ms): %d/%d => %.02f%%\n", 3404447, C*W*H, 100.0f*(float)(3404447)/(float)(C*W*H));
+    printf("libpng target (@163ms): %d/%d => %.02f%%\n", 3404447, C*W*H, 100.0*(double)(3404447)/(double)(C*W*H));
 
     free(out);
     free(buf);
