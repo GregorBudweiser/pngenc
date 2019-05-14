@@ -89,14 +89,20 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     pngenc_adler32 sum;
     adler_init(&sum);
     uint32_t num_rows = encoder->buffer_size/desc->row_stride + 1;
-    uint32_t y;
+    int64_t y;
+
+    uint32_t num_iterations = (desc->height - 1)/num_rows + 1;
+    omp_set_num_threads(min_i32((int32_t)num_iterations,
+                                omp_get_max_threads()));
 
     int32_t err = 0;
 
 #pragma omp parallel
-#pragma omp for ordered
+#pragma omp for ordered schedule(static, 1)
     for(y = 0; y < desc->height; y += num_rows) {
-        uint32_t yNext = min_u32(y+num_rows, desc->height);
+        //printf("%d start\n", omp_get_thread_num());
+
+        uint32_t yNext = min_u32((uint32_t)y+num_rows, desc->height);
 
         // intermediate result buffers
         uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
@@ -110,7 +116,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
         int64_t result;
         uint8_t * const idat_ptr = dst;
         {
-            uint32_t yStart = y;
+            uint32_t yStart = (uint32_t)y;
             uint32_t yEnd = yNext;
 
             // prepare data
@@ -149,10 +155,16 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
             // number of bytes: Idat hdr + data + checksum
             result = (int64_t)(dst - idat_ptr);
+
+            //printf("%d done work\n", omp_get_thread_num());
         }
 
 #pragma omp ordered
         {
+
+            //printf("%d critical\n", omp_get_thread_num());
+
+            //printf("%d\n", omp_get_thread_num());
             if(callback(idat_ptr, (uint32_t)result, user_data) < 0) {
                 err = 1;
             }

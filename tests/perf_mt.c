@@ -5,6 +5,17 @@
 #include <string.h>
 #include <malloc.h>
 
+/**
+ * Rather than writing to /dev/null (or nul on windows) we use an empty callback
+ * because MSVC is kinda slow when using nul.
+ */
+int null_callback(const void * data, uint32_t data_len, void * user_data) {
+    UNUSED(data);
+    UNUSED(data_len);
+    UNUSED(user_data);
+    return PNGENC_SUCCESS;
+}
+
 int perf_mt(int argc, char* argv[]) {
     const uint32_t W = 1920;
     const uint32_t H = 1080;
@@ -36,11 +47,11 @@ int perf_mt(int argc, char* argv[]) {
 
     pngenc_encoder encoder = pngenc_create_encoder();
 
-    pngenc_write(encoder, &desc, "C:\\Users\\RTFM2\\Desktop\\test.png");
+    //pngenc_write(encoder, &desc, "C:\\Users\\RTFM2\\Desktop\\test.png");
 
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 20; i++) {
         TIMING_START;
-        pngenc_write(encoder, &desc, "nul");
+        pngenc_encode(encoder, &desc, null_callback, NULL);
         TIMING_END;
     }
 
