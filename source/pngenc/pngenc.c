@@ -40,9 +40,7 @@ int pngenc_encode(pngenc_encoder encoder,
                   pngenc_user_write_callback callback,
                   void *user_data) {
 
-    write_png(encoder, descriptor, callback, user_data);
-
-    return PNGENC_ERROR;
+    return write_png(encoder, descriptor, callback, user_data);
 }
 
 void pngenc_destroy_encoder(pngenc_encoder encoder) {

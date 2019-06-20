@@ -64,9 +64,9 @@ int integration_save_png(int argc, char* argv[]) {
 
     int c;
     for (c = 1; c <= 4; c++) {
-        save(c);
+        RETURN_ON_ERROR(save(c));
     }
 
-    return 0;
+    return PNGENC_SUCCESS;
 }
 
