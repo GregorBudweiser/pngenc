@@ -18,8 +18,6 @@ void adler_update64(pngenc_adler32 * adler, const uint8_t * data,
 
 uint32_t adler_get_checksum(const pngenc_adler32 * adler);
 void adler_set_checksum(pngenc_adler32 * adler, uint32_t checksum);
-void adler_copy_on_update(pngenc_adler32 * adler, const uint8_t * data,
-                          uint32_t length, uint8_t * dst);
 
 /*
  * Taken and adapted from zlib

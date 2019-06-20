@@ -95,6 +95,15 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     omp_set_num_threads(min_i32((int32_t)num_iterations,
                                 omp_get_max_threads()));
 
+
+
+    // zlib stream header..
+    uint8_t shdr[2];
+    shdr[0] = 0x08; // CM = 8 (=deflate), CINFO = 0 (window size)
+    shdr[1] = (31 - (((uint32_t)shdr[0]*256) % 31))
+            | (0 << 5) | (0 << 6); // FCHECK | FDICT | FLEVEL;
+    RETURN_ON_ERROR(write_idat_block(shdr, 2, callback, user_data));
+
     int32_t err = 0;
 
 #pragma omp parallel
@@ -132,9 +141,10 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
             dst += sizeof(hdr); // advance destination pointer
 
             // compress: zlib-deflate-block, zlib-uncompressed-0-block (zflush)
+            uint8_t last_block = yEnd >= desc->height ? 1 : 0;
             result = desc->strategy == PNGENC_NO_COMPRESSION
-                    ? write_deflate_block_uncompressed(dst, tmp, num_bytes)
-                    : write_deflate_block_compressed(dst, tmp, num_bytes, 0);
+                    ? write_deflate_block_uncompressed(dst, tmp, num_bytes, last_block)
+                    : write_deflate_block_compressed(dst, tmp, num_bytes, last_block);
 
             if(result < 0) {
                 err = 1;

@@ -45,9 +45,9 @@ int write_idat_block(const uint8_t * src, uint32_t len,
                      pngenc_user_write_callback callback,
                      void * user_data) {
     // Header + Data
-    idat_header hdr = { len, { 'I', 'D', 'A', 'T' } };
+    idat_header hdr = { swap_endianness32(len), { 'I', 'D', 'A', 'T' } };
     RETURN_ON_ERROR(callback(&hdr, sizeof(hdr), user_data));
-    RETURN_ON_ERROR(callback(&src, len, user_data));
+    RETURN_ON_ERROR(callback(src, len, user_data));
 
     // Checksum
     uint32_t crc = crc32c(0xCA50F9E1, src, len);

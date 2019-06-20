@@ -138,7 +138,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
 }
 
 int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
-                                         uint32_t num_bytes) {
+                                         uint32_t num_bytes, uint8_t last_block) {
     struct zlib_header {
         uint8_t padding;
         uint8_t b_type;
@@ -151,7 +151,7 @@ int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
     uint32_t i;
     for(i = 0; i < num_bytes; i += 0xFFFF) {
         uint16_t len = (uint16_t)min_u32(0xFFFF, num_bytes - i);
-        hdr.b_type = 0;
+        hdr.b_type = (last_block && (i + 0xFFFF) >= num_bytes) ? 1 : 0;
         hdr.len = len;
         hdr.nlen = ~len;
         memcpy(dst, &hdr.b_type, 5); // write/cpy header
@@ -164,14 +164,25 @@ int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
     return dst - old_dst;
 }
 
-void push_bits(uint64_t bits, uint64_t nbits, uint8_t * data,
+void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
                uint64_t * bit_offset) {
-    assert(nbits < 41);
+    assert(nbits <= 64);
 
-    uint64_t local_offset = (*bit_offset) & 0x7;
-    uint8_t * local_data_ptr = data + ((*bit_offset) >> 3);
-    uint64_t local_data = *((uint64_t*)local_data_ptr);
-    local_data |= (bits << local_offset);
-    *((uint64_t*)local_data_ptr) = local_data;
-    *bit_offset = (*bit_offset) + nbits;
+    // fill current byte
+    uint64_t offset = *bit_offset;
+    data += offset >> 3;
+    uint8_t shift = (uint8_t)(offset) & 0x7;
+    *bit_offset = offset + nbits;
+    int8_t bits_remaining = (int8_t)nbits;
+    *data = (*data) | (uint8_t)(bits << shift);
+    bits >>= 8 - shift;
+    bits_remaining -= 8 - shift;
+
+    // write remaining bytes..
+    while(bits_remaining > 0) {
+        data++;
+        *data = (uint8_t)bits;
+        bits <<= 8;
+        bits_remaining -= 8;
+    }
 }

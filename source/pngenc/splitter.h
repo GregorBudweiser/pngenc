@@ -4,7 +4,7 @@
 
 uint16_t swap_uint16(uint16_t val);
 
-void push_bits(uint64_t bits, uint64_t nbits, uint8_t * data,
+void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
                uint64_t * bit_offset);
 
 int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,

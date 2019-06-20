@@ -4,9 +4,9 @@
 #include <malloc.h>
 
 int main() {
-    const uint32_t W = 1920;
-    const uint32_t H = 20;
-    const uint32_t C = 3;
+    const uint32_t W = 2;
+    const uint32_t H = 2;
+    const uint32_t C = 1;
 
     uint8_t * buf = malloc(W*H*C);
     memset(buf, 0x0, W*H*C);
@@ -21,9 +21,14 @@ int main() {
     desc.height = H;
     desc.num_channels = C;
     desc.row_stride = (uint64_t)W*(uint64_t)C;
-    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
+    desc.strategy = PNGENC_NO_COMPRESSION; //PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     desc.bit_depth = 8;
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_uncompressed.png"));
+
+
+    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
+    RETURN_ON_ERROR(pngenc_write_file(&desc, "img_compressed.png"));
+
 
     free(buf);
 
