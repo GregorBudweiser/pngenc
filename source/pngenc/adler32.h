@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct _pngenc_adler32 {
     uint32_t s1;
