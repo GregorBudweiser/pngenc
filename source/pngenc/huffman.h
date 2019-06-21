@@ -49,3 +49,5 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder);
 uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder);
 
 void huffman_encoder_print(const huffman_encoder * encoder, const char * name);
+void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
+               uint64_t * bit_offset);

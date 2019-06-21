@@ -163,26 +163,3 @@ int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
 
     return dst - old_dst;
 }
-
-void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
-               uint64_t * bit_offset) {
-    assert(nbits <= 64);
-
-    // fill current byte
-    uint64_t offset = *bit_offset;
-    data += offset >> 3;
-    uint8_t shift = (uint8_t)(offset) & 0x7;
-    *bit_offset = offset + nbits;
-    int8_t bits_remaining = (int8_t)nbits;
-    *data = (*data) | (uint8_t)(bits << shift);
-    bits >>= 8 - shift;
-    bits_remaining -= 8 - shift;
-
-    // write remaining bytes..
-    while(bits_remaining > 0) {
-        data++;
-        *data = (uint8_t)bits;
-        bits <<= 8;
-        bits_remaining -= 8;
-    }
-}

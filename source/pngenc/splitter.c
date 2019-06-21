@@ -95,8 +95,6 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     omp_set_num_threads(min_i32((int32_t)num_iterations,
                                 omp_get_max_threads()));
 
-
-
     // zlib stream header..
     uint8_t shdr[2];
     shdr[0] = 0x08; // CM = 8 (=deflate), CINFO = 0 (window size)
@@ -109,15 +107,11 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 #pragma omp parallel
 #pragma omp for ordered schedule(static, 1)
     for(y = 0; y < desc->height; y += num_rows) {
-        //printf("%d start\n", omp_get_thread_num());
-
         uint32_t yNext = min_u32((uint32_t)y+num_rows, desc->height);
 
         // intermediate result buffers
         uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
-        //memset(tmp, 0, 2*encoder->buffer_size);
         uint8_t * dst = encoder->dst_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
-        //memset(dst, 0, 2*encoder->buffer_size);
 
         pngenc_adler32 local_sum;
         adler_init(&local_sum);
@@ -165,16 +159,10 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
             // number of bytes: Idat hdr + data + checksum
             result = (int64_t)(dst - idat_ptr);
-
-            //printf("%d done work\n", omp_get_thread_num());
         }
 
 #pragma omp ordered
         {
-
-            //printf("%d critical\n", omp_get_thread_num());
-
-            //printf("%d\n", omp_get_thread_num());
             if(callback(idat_ptr, (uint32_t)result, user_data) < 0) {
                 err = 1;
             }
