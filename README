@@ -1,20 +1,15 @@
 README
 ======
-This is pngenc: A small and fast png encoder. In easily encodes FullHD images @100Hz! 
-It is meant as a supplement to other png codecs where encoding performance is critical.
+This is pngenc: A small and _fast_ png encoder.
 
-Pngenc features two fast modes: 
- * Uncompressed
- * Compressed (Huffman Only; same as zlib's Z_HUFF_ONLY)
-
-Pngenc is optimized for 64bit multicore machines such as x86_64 and ARM64 but compiles and runs on 32bit platforms just fine. It can be compiled with all major compilers such as gcc, clang and MSVC.
-
+It is optimized for 64bit multicore machines such as x86_64 and ARM64 but compiles and runs on 32bit platforms as well.
 
 TYPICAL RUNTIMES
 ================
-24bit FullHD @ i7 860, 4C/8T (save to /dev/null):
- * Uncompressed: <5ms (~200Hz)
- * Compressed: <9ms (>100Hz)
+Pngenc implements both uncompressed and compressed (Z_HUFF_ONLY) modes.
+Runtimes for a FullHD image (1920x1080, 24bit) encoded on an Intel Core i7 860, 4C/8T (save to /dev/null):
+ * Uncompressed: ~5ms (libpng: ~12ms)
+ * Compressed: ~9ms (libpng: ~85ms)
 
 COMPILE
 =======
