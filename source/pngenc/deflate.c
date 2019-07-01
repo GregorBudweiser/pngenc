@@ -6,8 +6,8 @@
 
 int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
                                        uint32_t num_bytes, uint8_t last_block) {
-    // clear dst memory for header
-    for (int i = 0; i < 287; i++) {
+    // clear dst memory for header and first four bytes of stream
+    for (int i = 0; i < 287+4; i++) {
         dst[i] = 0;
     }
 
@@ -121,10 +121,11 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
      */
     RETURN_ON_ERROR(huffman_encoder_encode(&encoder, src, num_bytes, dst,
                                            &bit_offset));
+    // Terminator symbol (i.e. compressed block ends here)
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               dst, &bit_offset);
 
-    // zflush with uncompressed block to achieve alignment
+    // zflush with uncompressed block to achieve byte-alignment
     push_bits(last_block, 1, dst, &bit_offset); // last block?
     push_bits(0, 2, dst, &bit_offset);          // uncompressed block
     uint64_t encoded_bytes = (bit_offset + 7) / 8;

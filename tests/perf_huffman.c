@@ -64,33 +64,6 @@ int perf_encode(const uint8_t * buf, uint8_t * dst) {
         TIMING_END;
     }
 
-    printf("encode32\n");
-    for(i = 0; i < 5; i++) {
-        offset = 0;
-        TIMING_START;
-        // Does not need memset
-        huffman_encoder_encode32(&encoder, buf, C*W*H, dst, &offset);
-        TIMING_END;
-    }
-
-    printf("encode64\n");
-    for(i = 0; i < 5; i++) {
-        offset = 0;
-        TIMING_START;
-        memset(dst, 0, W*H*C);
-        huffman_encoder_encode64(&encoder, buf, C*W*H, dst, &offset);
-        TIMING_END;
-    }
-
-    printf("encode64_2\n");
-    for(i = 0; i < 5; i++) {
-        offset = 0;
-        TIMING_START;
-        memset(dst, 0, W*H*C);
-        huffman_encoder_encode64_2(&encoder, buf, C*W*H, dst, &offset);
-        TIMING_END;
-    }
-
     printf("encode64_3\n");
     for(i = 0; i < 5; i++) {
         offset = 0;

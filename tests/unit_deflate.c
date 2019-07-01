@@ -1,6 +1,7 @@
 #include "common.h"
 #include "string.h"
 
+#include "../source/pngenc/huffman.h"
 #include "../source/pngenc/deflate.h"
 
 int test_push_bits() {
@@ -23,6 +24,8 @@ int test_push_bits() {
 }
 
 int unit_deflate(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argc);
     RETURN_ON_ERROR(test_push_bits());
 
     return 0; // TODO

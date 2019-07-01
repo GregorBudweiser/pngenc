@@ -94,39 +94,21 @@ int test_huffman_encode() {
 
     // Compute reference using simple shifting algorithm
     uint64_t ref_offset;
-    memset(ref, 0, 2*N);
+    //memset(ref, 0, 2*N);
+    ref[0] = 0; // only needs first byte cleared
     ref_offset = OFFSET;
     RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset));
 
-    // Compare optimized versions
+    // Compare optimized version
     {
         uint64_t offset;
-        memset(dst, 0, 2*N);
-        offset = OFFSET;
-        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src, N, dst, &offset));
-
-        ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
-    }
-
-    {
-        uint64_t offset;
-        memset(dst, 0, 2*N);
-        offset = OFFSET;
-        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src, N, dst, &offset));
-
-        ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
-    }
-
-    {
-        uint64_t offset;
-        memset(dst, 0, 2*N);
+        memset(dst + (OFFSET/8+1), 0xFF, 2*N - (OFFSET/8+1));
+        dst[0] = 0; // only needs first byte cleared
         offset = OFFSET;
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, offset / 8) == 0);
     }
     return 0;
 }
@@ -155,36 +137,30 @@ int test_huffman_encode_multi() {
     // Check we get the same when encoding is split up into two steps
     {
         uint64_t offset;
-        memset(dst, 0, 2*N);
+        memset(dst, 0xFF, 2*N); // Does not need output memory to be cleared
+        dst[0] = 0; // Only needs first byte to be cleared/zeroed
         offset = 0;
-        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src, N/2+3, dst, &offset));
-        RETURN_ON_ERROR(huffman_encoder_encode64(&encoder, src+N/2+3, N/2-3, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src, N/2+3, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src+N/2+3, 20, dst, &offset));
+        RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src+N/2+23, N/2-23, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, offset / 8) == 0);
     }
 
     {
         uint64_t offset;
-        memset(dst, 0, 2*N);
-        offset = 0;
-        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src, N/2+3, dst, &offset));
-        RETURN_ON_ERROR(huffman_encoder_encode64_2(&encoder, src+N/2+3, N/2-3, dst, &offset));
-
-        ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
-    }
-
-    {
-        uint64_t offset;
-        //memset(dst, 0, 2*N); // Does not need output memory to be cleared
+        memset(dst, 0xFF, 2*N); // Does not need output memory to be cleared
+        for(i = 0; i < 4; i++) { // Only needs first four bytes to be cleared
+            dst[i] = 0;
+        }
         offset = 0;
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N/2+3, dst, &offset));
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src+N/2+3, 20, dst, &offset));
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src+N/2+23, N/2-23, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, N) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, offset / 8) == 0);
     }
     return 0;
 }

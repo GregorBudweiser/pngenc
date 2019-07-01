@@ -27,12 +27,6 @@ int huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,
 
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t *offset);
-int huffman_encoder_encode32(const huffman_encoder * encoder, const uint8_t * src,
-                             uint32_t length, uint8_t * dst, uint64_t *offset);
-int huffman_encoder_encode64(const huffman_encoder * encoder, const uint8_t * src,
-                             uint32_t length, uint8_t * dst, uint64_t *offset);
-int huffman_encoder_encode64_2(const huffman_encoder * encoder, const uint8_t * src,
-                            uint32_t length, uint8_t * dst, uint64_t *offset);
 int huffman_encoder_encode64_3(const huffman_encoder * encoder, const uint8_t * src,
                             uint32_t length, uint8_t * dst, uint64_t *offset);
 
