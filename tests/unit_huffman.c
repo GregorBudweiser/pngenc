@@ -9,9 +9,9 @@
 #define CODE_LENGTH_LIMIT 15
 
 // Avoid stack overflow
-uint8_t src[N];
-uint8_t dst[2*N];
-uint8_t ref[2*N];
+static uint8_t src[N];
+static uint8_t dst[2*N];
+static uint8_t ref[2*N];
 
 int test_huffman_build_histogram() {
     huffman_encoder encoder;
@@ -62,7 +62,7 @@ int test_huffman_build_tree() {
         // Build histogram. Higher symbols have higher count => less bits
         int i;
         for(i = 0; i < HUFF_MAX_SIZE; i++) {
-            encoder.histogram[i] = i+1;
+            encoder.histogram[i] = (uint32_t)(i+1);
         }
 
         // Build tree
