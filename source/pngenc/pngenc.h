@@ -12,12 +12,12 @@
 #endif
 
 #define PNGENC_VERSION_MAJOR 0
-#define PNGENC_VERSION_MINOR 1
+#define PNGENC_VERSION_MINOR 5
+#define PNGENC_VERSION_PATCH 0
 
 typedef enum _pngenc_compression_strategy {
     PNGENC_NO_COMPRESSION,                    // fastest, no compression
-    PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1, // reasonably balanced
-    PNGENC_FULL_COMPRESSION                   // reasonably compressed
+    PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1  // reasonably fast
 } pngenc_compression_strategy;
 
 typedef enum _pngenc_result {

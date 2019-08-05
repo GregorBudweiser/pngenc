@@ -42,10 +42,6 @@ create_test(perf_huffman)
 create_test(perf_adler)
 create_test(perf_mt)
 
-# Miscellaneous tests
-#create_test(misc_matcher)
-#create_test(misc_reverse)
-
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
                          "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.h")

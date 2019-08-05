@@ -1,5 +1,4 @@
 #include "common.h"
-#include "../source/pngenc/matcher.h"
 #include "../source/pngenc/huffman.h"
 #include "string.h"
 

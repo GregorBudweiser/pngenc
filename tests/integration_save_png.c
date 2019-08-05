@@ -20,7 +20,7 @@ static void fill(uint8_t * buf, int x0, int y0, int w, int h, uint8_t val, const
     }
 }
 
-static int save(const int C) {
+static int save(const uint8_t C) {
     uint8_t * buf = (uint8_t*)malloc(C*W*H);
     memset(buf, 0, C*W*H);
 
@@ -48,11 +48,6 @@ static int save(const int C) {
     sprintf(filename, "integration_save_png_%dC_comp.png", C);
     ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
 
-    // Save compressed
-    desc.strategy = PNGENC_FULL_COMPRESSION;
-    sprintf(filename, "integration_save_png_%dC_full.png", C);
-    ASSERT_TRUE(pngenc_write_file(&desc, filename) == PNGENC_SUCCESS);
-
     free(buf);
 
     return PNGENC_SUCCESS;
@@ -62,7 +57,7 @@ int integration_save_png(int argc, char* argv[]) {
     UNUSED(argc);
     UNUSED(argv);
 
-    int c;
+    uint8_t c;
     for (c = 1; c <= 4; c++) {
         RETURN_ON_ERROR(save(c));
     }
