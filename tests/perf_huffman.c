@@ -79,20 +79,21 @@ int perf_huffman(int argc, char* argv[]) {
     UNUSED(argc);
     UNUSED(argv);
 
-    uint8_t * src = (uint8_t*)malloc(W*H*C);
-    uint8_t * dst = (uint8_t*)malloc(W*H*C);
+    uint8_t * src;
+    uint8_t * dst;
     {
-        FILE * f = fopen("data.bin", "rb");
-        if(f == 0) {
-            printf("Could not open file: data.bin\n");
-            free(src);
-            free(dst);
-            return -1;
+        FILE * file = fopen("data.bin", "rb");
+        if(file == 0) {
+            printf("Could not find raw image data input.\n");
+            printf("Please provide binary image data in the file 'data.bin'.\n");
+            printf("Expecting 1920x1080x3 bytes of data.\n");
+            return 0;
         }
-        fread(src, C, W*H, f);
-        fclose(f);
+        src = (uint8_t*)malloc(W*H*C);
+        dst = (uint8_t*)malloc(W*H*C);
+        fread(src, C, W*H, file);
+        fclose(file);
     }
-
 
     perf_add(src, dst);
     RETURN_ON_ERROR(perf_encode(src, dst));

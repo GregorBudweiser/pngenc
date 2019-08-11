@@ -17,6 +17,9 @@ int null_callback(const void * data, uint32_t data_len, void * user_data) {
 }
 
 int perf_mt(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+
     const uint32_t W = 1920;
     const uint32_t H = 1080;
     const uint32_t C = 3;
@@ -46,19 +49,14 @@ int perf_mt(int argc, char* argv[]) {
     desc.bit_depth = 8;
 
     pngenc_encoder encoder = pngenc_create_encoder();
-
-    //pngenc_write(encoder, &desc, "C:\\Users\\RTFM2\\Desktop\\test.png");
-
     for(int i = 0; i < 20; i++) {
         TIMING_START;
         pngenc_encode(encoder, &desc, null_callback, NULL);
         TIMING_END;
     }
-
-    free(buf);
-
     pngenc_destroy_encoder(encoder);
 
+    free(buf);
     return 0;
 }
 
