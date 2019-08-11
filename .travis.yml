@@ -1,6 +1,12 @@
+language: c
 install: cmake
 compiler: gcc
 env:
   OMP_NUM_THREADS=4
 git:
   depth: 1
+script:
+  mkdir build-rel
+  cd build-rel
+  cmake .. -DCMAKE_BUILD_TYPE=Release
+  make -j4
