@@ -29,7 +29,6 @@ endmacro(create_test)
 create_test(unit_adler)
 create_test(unit_huffman)
 create_test(unit_crc)
-create_test(unit_matcher)
 create_test(unit_deflate)
 
 # Integration tests
