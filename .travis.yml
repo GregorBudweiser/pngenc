@@ -6,7 +6,7 @@ env:
 git:
   depth: 1
 script:
-  mkdir build-rel
-  cd build-rel
-  cmake .. -DCMAKE_BUILD_TYPE=Release
-  make -j4
+  - mkdir build-rel
+  - cd build-rel
+  - cmake .. -DCMAKE_BUILD_TYPE=Release
+  - make -j4
