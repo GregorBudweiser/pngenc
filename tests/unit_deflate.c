@@ -19,7 +19,7 @@ int test_deflate() {
 }
 
 int test_push_bits() {
-    uint8_t buf[2] = { 0, 0 };
+    uint8_t buf[3] = { 0, 0, 0 };
     uint64_t bit_offset = 0;
 
     // put 5 times three bits into buffer/stream
@@ -32,6 +32,7 @@ int test_push_bits() {
     // test if we have 16 bits set to one
     ASSERT_TRUE(buf[0] == 0xFF);
     ASSERT_TRUE(buf[1] == 0xFF);
+    ASSERT_TRUE(buf[2] == 0x0);
 
     return 0;
 }
