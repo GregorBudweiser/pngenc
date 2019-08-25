@@ -13,7 +13,7 @@ int main() {
 
     uint32_t i;
     for(i = 0; i < W*H*C; i++)
-        buf[i] = i;
+        buf[i] = (uint8_t)i;
 
     pngenc_image_desc desc;
     desc.data = buf;
@@ -21,11 +21,13 @@ int main() {
     desc.height = H;
     desc.num_channels = C;
     desc.row_stride = (uint64_t)W*(uint64_t)C;
-    desc.strategy = PNGENC_NO_COMPRESSION; //PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     desc.bit_depth = 8;
+
+    // save uncompressed
+    desc.strategy = PNGENC_NO_COMPRESSION;
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_uncompressed.png"));
 
-
+    // save compressed
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_compressed.png"));
 

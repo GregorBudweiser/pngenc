@@ -6,14 +6,13 @@
 #include "adler32.h"
 #include "callback.h"
 #include <stdio.h>
-#include <assert.h>
 #include <omp.h>
 
 pngenc_encoder pngenc_create_encoder(void) {
     pngenc_encoder encoder =
             (pngenc_encoder)malloc(sizeof(struct _pngenc_encoder));
     encoder->num_threads = omp_get_max_threads();
-    encoder->buffer_size = 1024*1024; // 2 MB
+    encoder->buffer_size = 1024*1024; // src=1MB; dst=2MB
     encoder->tmp_buffers = malloc(2ULL * encoder->buffer_size
                                   * (uint32_t)encoder->num_threads);
     encoder->dst_buffers = malloc(2ULL * encoder->buffer_size
