@@ -107,10 +107,10 @@ uint32_t msb_set(uint32_t value) {
  */
 uint32_t fast_pow95(uint32_t value) {
     uint32_t msb = msb_set(value);
-    uint64_t a = value & ~(1 << msb-1);
-    uint64_t b = (1 << msb-1) - a;
+    uint64_t a = value & ~(1 << (msb-1));
+    uint64_t b = (1 << (msb-1)) - a;
     uint64_t lerp = pow95[msb+1]*a + pow95[msb]*b;
-    return (uint32_t)(lerp >> msb-1);
+    return (uint32_t)(lerp >> (msb-1));
 }
 
 /**
@@ -118,8 +118,8 @@ uint32_t fast_pow95(uint32_t value) {
  */
 uint32_t fast_pow80(uint32_t value) {
     uint32_t msb = msb_set(value);
-    uint64_t a = value & ~(1 << msb-1);
-    uint64_t b = (1 << msb-1) - a;
+    uint64_t a = value & ~(1 << (msb-1));
+    uint64_t b = (1 << (msb-1)) - a;
     uint64_t lerp = pow80[msb+1]*a + pow80[msb]*b;
-    return (uint32_t)(lerp >> msb-1);
+    return (uint32_t)(lerp >> (msb-1));
 }

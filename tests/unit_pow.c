@@ -1,5 +1,6 @@
 #include "common.h"
-
+#include <math.h>
+#include "../source/pngenc/pow.h"
 
 int test_msb_set() {
     ASSERT_TRUE(msb_set(0) == 0);
