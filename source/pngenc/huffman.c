@@ -2,7 +2,6 @@
 #include "utils.h"
 #include "pngenc.h"
 #include <string.h>
-#include <math.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -62,6 +61,9 @@ void huffman_encoder_add(uint32_t * histogram, const uint8_t * symbols,
     }
 }
 
+/**
+ * Same as huffman_encoder_add_simple just optimized for 64bit machines.
+ */
 void huffman_encoder_add64(uint32_t * histogram, const uint8_t * symbols,
                            uint32_t length) {
     // padd to 8 bytes
@@ -156,16 +158,23 @@ void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
  * @param power: Higher values give better codes but need more iterations
  */
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
-                                       uint8_t limit, double power) {
+                                       uint8_t limit, power_coefficient power) {
     // TODO: Compute optimal tree (e.g. use optimal algorithm)
     RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
     while(huffman_encoder_get_max_length(encoder) > limit) {
-        for(int i = 0; i < HUFF_MAX_SIZE; i++) {
-            if(encoder->histogram[i]) {
-                // nonlinearly reduce weight of nodes to lower max tree depth
-                uint32_t reduced = (uint32_t)(float)pow(encoder->histogram[i], power);
-                encoder->histogram[i] = max_u32(1, reduced);
+        // nonlinearly reduce weight of nodes to lower max tree depth
+        switch(power) {
+        case POW_80:
+            for(int i = 0; i < HUFF_MAX_SIZE; i++) {
+                encoder->histogram[i] = fast_pow80(encoder->histogram[i]);
             }
+            break;
+        case POW_95: // fallthrough
+        default:
+            for(int i = 0; i < HUFF_MAX_SIZE; i++) {
+                encoder->histogram[i] = fast_pow95(encoder->histogram[i]);
+            }
+            break;
         }
         RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
     }

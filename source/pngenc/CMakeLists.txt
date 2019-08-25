@@ -10,11 +10,6 @@ list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/iacaMarks.h")
 
 # set flags to activate dllexport on win
 add_library(pngenc SHARED ${pngenc_sources})
-# add libm on gnu/linux
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(pngenc m)
-endif()
-
 add_executable(example "main.c" "pngenc.h")
 target_link_libraries(example pngenc)
 

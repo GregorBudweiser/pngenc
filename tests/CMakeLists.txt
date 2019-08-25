@@ -30,6 +30,7 @@ create_test(unit_adler)
 create_test(unit_huffman)
 create_test(unit_crc)
 create_test(unit_deflate)
+create_test(unit_pow)
 
 # Integration tests
 create_test(integration_save_png)
@@ -58,3 +59,8 @@ add_executable(${test_prefix} ${test_sources} ${pngenc_sources} ${system_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/common.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/common.c")
 target_link_libraries(${test_prefix} pngenc)
+
+# add libm on gnu/linux
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(${test_prefix} m)
+endif()

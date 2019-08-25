@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "pow.h"
 
 #define HUFF_MAX_SIZE 285
 
@@ -8,7 +9,6 @@ typedef struct _huffman_encoder {
     uint16_t symbols[HUFF_MAX_SIZE];     // max. 15 bit to represent value
     uint8_t code_lengths[HUFF_MAX_SIZE]; // max.  4 bit to represent length
 } huffman_encoder;
-
 
 void huffman_encoder_init(huffman_encoder * encoder);
 void huffman_encoder_add(uint32_t *histogram, const uint8_t * symbols,
@@ -23,7 +23,7 @@ void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
                                 uint32_t length);
 int huffman_encoder_build_tree(huffman_encoder * encoder);
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,
-                                       double power);
+                                       power_coefficient power);
 
 int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                            uint32_t length, uint8_t * dst, uint64_t *offset);
