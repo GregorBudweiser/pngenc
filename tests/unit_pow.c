@@ -17,12 +17,12 @@ int test_msb_set() {
 
 int test_fast_pow95() {
     for(int i = 0; i < 31; i++) {
-        int ref = (int)(float)pow(1 << i, 0.95);
-        int approx = fast_pow95(1 << i);
+        uint32_t ref = (uint32_t)(float)pow(1 << i, 0.95);
+        uint32_t approx = fast_pow95(1 << i);
         ASSERT_TRUE(ref == approx);
     }
 
-    for(int i = 2; i < 100*1000; i++) {
+    for(uint32_t i = 2; i < 100*1000; i++) {
         ASSERT_TRUE(fast_pow95(i) < i);
     }
 
@@ -31,12 +31,12 @@ int test_fast_pow95() {
 
 int test_fast_pow80() {
     for(int i = 0; i < 31; i++) {
-        int ref = (int)(float)pow(1 << i, 0.80);
-        int approx = fast_pow80(1 << i);
+        uint32_t ref = (uint32_t)(float)pow(1 << i, 0.80);
+        uint32_t approx = fast_pow80(1 << i);
         ASSERT_TRUE(ref == approx);
     }
 
-    for(int i = 2; i < 100*1000; i++) {
+    for(uint32_t i = 2; i < 100*1000; i++) {
         ASSERT_TRUE(fast_pow80(i) < i);
     }
 
@@ -45,6 +45,9 @@ int test_fast_pow80() {
 
 
 int unit_pow(int argc, char* argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+
     RETURN_ON_ERROR(test_msb_set());
     RETURN_ON_ERROR(test_fast_pow80());
     RETURN_ON_ERROR(test_fast_pow95());

@@ -76,12 +76,17 @@ const static uint32_t pow80[] = {
  * @returns The (one-based) index of the most significant bit set or zero if
  *          none is set. This function only works up to 2^31-1.
  */
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 uint32_t msb_set(uint32_t value) {
 #if defined(__i386) || defined(__amd64) || defined(_M_AMD64)
     assert(value < 0x80000000); // max 31 bits
     value = (value << 1) | 1; // work around undefined result for 0 in clz
 #if defined(_MSC_VER)
-    return 31 - _BitScanReverse(value);
+    unsigned long result;
+    _BitScanReverse(&result, value);
+    return result;
 #else
     return 31 - __builtin_clz(value);
 #endif
