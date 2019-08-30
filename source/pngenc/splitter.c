@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <omp.h>
 
+#if defined(_MSC_VER) && defined(_WIN64)
+#include <emmintrin.h>
+#endif
+
 uint16_t swap_uint16(uint16_t val) {
     return (uint16_t)(val << 8) | (uint16_t)(val >> 8);
 }
@@ -32,10 +36,20 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
             uint64_t i;
             for(i = 0; i < c; i++)
                 dst[i] = src[i];
-
+#if defined(_MSC_VER) && defined(_WIN64)
+            // Use SSE impl only for MSVC. GCC and Clang do this already
+            for(i = 0; i < length-32; i+=16) {
+                __m128i a = _mm_loadu_si128((const __m128i*)(src + i));
+                __m128i b = _mm_loadu_si128((const __m128i*)(src +c + i));
+                _mm_storeu_si128((__m128i*)(dst + c + i), _mm_sub_epi8(b, a));
+            }
+            // trailing bytes
+            for(; i < length; i++)
+                dst[i] = src[i] - src[i-c];
+#else
             for(i = c; i < length; i++)
                 dst[i] = src[i] - src[i-c];
-
+#endif
             dst += length;
 
         } else { // 16bit
