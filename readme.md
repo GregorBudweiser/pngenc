@@ -1,8 +1,8 @@
 # Welcome!
 
-This is **pngenc**: A small and *fast* png encoder. 
+This is **pngenc**: A small and *fast* png encoder written in C. 
 
-It is optimized for 64bit multicore machines such as x86_64 and ARM64 but compiles and runs on 32bit platforms as well.
+It is optimized for 64bit multicore machines such as x86_64 and depends only on libc.
 
 ### Status
 
@@ -13,13 +13,17 @@ master | [![Build Status](https://travis-ci.org/GregorBudweiser/pngenc.svg?branc
 ### Typical Results
 
 pngenc implements both uncompressed and compressed (Z_HUFF_ONLY) modes.
-Runtimes for a FullHD image (1920x1080, 24bit) encoded on an Intel Core i7 860, 4C/8T (save to /dev/null):
+Runtimes for a FullHD image (1920x1080, 24bit) encoded on an **Intel Core i7 860**, 4C/8T (save to /dev/null):
 * Uncompressed: ~5ms (libpng: ~12ms)
 * Compressed: ~9ms (libpng: ~85ms)
 
+Runtimes for a FullHD image (1920x1080, 24bit) encoded on an **AMD Ryzen 7 3700X**, 8C/16T (save to /dev/null):
+* Uncompressed: ~1.7ms (libpng: ~6.3ms)
+* Compressed: ~3.2ms (libpng: ~70ms)
+
 ### How to Build
 
-To build pngenc just use cmake:
+Building pngenc requires a C compiler and cmake:
 
 ```
 cd /to/pngenc
