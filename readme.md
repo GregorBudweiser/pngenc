@@ -12,7 +12,8 @@ master | [![Build Status](https://travis-ci.org/GregorBudweiser/pngenc.svg?branc
 
 ### Typical Results
 
-pngenc implements both uncompressed and compressed (Z_HUFF_ONLY) modes.
+pngenc implements both uncompressed and compressed (Z_HUFFMAN_ONLY) modes.
+
 Runtimes for a FullHD image (1920x1080, 24bit) encoded on an **Intel Core i7 860**, 4C/8T (save to /dev/null):
 * Uncompressed: ~5ms (libpng: ~12ms)
 * Compressed: ~9ms (libpng: ~85ms)
