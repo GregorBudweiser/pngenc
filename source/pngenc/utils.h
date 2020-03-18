@@ -23,7 +23,7 @@ float max_f32(float a, float b);
 
 uint32_t swap_endianness32(uint32_t value);
 
-#define UNUSED(expr) do { (void)(expr); } while (0)
+#define UNUSED(expr) do { (void)(expr); } while (0);
 
 #ifndef NDEBUG
 #define RETURN_ON_ERROR(expr) \

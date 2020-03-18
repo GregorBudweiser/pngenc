@@ -4,8 +4,8 @@
 #include <malloc.h>
 
 int main() {
-    const uint32_t W = 2;
-    const uint32_t H = 2;
+    const uint32_t W = 100;
+    const uint32_t H = 100;
     const uint32_t C = 1;
 
     uint8_t * buf = malloc(W*H*C);

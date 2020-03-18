@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdio.h>
 #include "pngenc.h"
 
 typedef struct _png_header {
@@ -15,10 +16,11 @@ typedef struct _png_header {
     // wrong padding: uint32_t check_sum;
 } png_header;
 
-typedef struct _idat_header {
+typedef struct _png_chunk {
     uint32_t size;
     uint8_t name[4];
-} idat_header;
+} png_chunk;
+typedef struct _png_chunk idat_header;
 
 typedef struct _png_end {
     uint32_t size;
@@ -36,3 +38,7 @@ int write_idat_block(const uint8_t * src, uint32_t len,
 
 int write_png_end(pngenc_user_write_callback callback,
                   void * user_data);
+
+int read_png_header(pngenc_image_desc * desc, FILE * file);
+
+int read_png_chunk_header(png_chunk * chunk, FILE * file);

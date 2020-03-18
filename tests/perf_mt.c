@@ -1,7 +1,7 @@
 #include "common.h"
 #include "../source/pngenc/pngenc.h"
 #include "../source/pngenc/utils.h"
-#include "../source/pngenc/splitter.h"
+#include "../source/pngenc/encoder.h"
 #include <string.h>
 #include <malloc.h>
 
@@ -48,10 +48,16 @@ int perf_mt(int argc, char* argv[]) {
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     desc.bit_depth = 8;
 
+    //pngenc_write_file(&desc, "C:/Users/RTFM2/Desktop/test.png");
+
     pngenc_encoder encoder = pngenc_create_encoder();
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 120; i++) {
+        char buf[1024];
+        //sprintf(buf, "C:/Users/RTFM2/Desktop/dst/%03d.png", i);
+        sprintf(buf, "D:/dst/%03d.png", i);
         TIMING_START;
-        pngenc_encode(encoder, &desc, null_callback, NULL);
+        pngenc_write(encoder, &desc, buf);
+        //pngenc_encode(encoder, &desc, null_callback, NULL);
         TIMING_END;
     }
     pngenc_destroy_encoder(encoder);

@@ -1,6 +1,7 @@
 #include "deflate.h"
 #include "huffman.h"
 #include "utils.h"
+#include "pngenc.h"
 #include <string.h>
 
 int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
@@ -18,24 +19,24 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
     push_bits(2, 2, dst, &bit_offset); // compressed block: dyn. huff. (10)_2
 
     // deflate
-    huffman_encoder encoder;
-    huffman_encoder_init(&encoder);
-    huffman_encoder_add(encoder.histogram, src, num_bytes);
+    huffman_codec encoder;
+    huffman_codec_init(&encoder);
+    huffman_codec_add(encoder.histogram, src, num_bytes);
     encoder.histogram[256] = 1; // terminator
 
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15, 0.95));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15, 0.95))
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder))
 
-    huffman_encoder code_length_encoder;
-    huffman_encoder_init(&code_length_encoder);
-    huffman_encoder_add(code_length_encoder.histogram,
+    huffman_codec code_length_encoder;
+    huffman_codec_init(&code_length_encoder);
+    huffman_codec_add(code_length_encoder.histogram,
                         encoder.code_lengths, 257);
     // we need to write the zero length for the distance code
     code_length_encoder.histogram[0]++;
 
     // code length codes limited to 7 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, 0.8));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, 0.8))
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder))
 
     /*
      * From the RFC:
@@ -67,9 +68,9 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
      *           corresponding symbol (literal/length or distance code
      *           length) is not used.
      */
-    push_bits(0, 3, dst, &bit_offset); // no length codes
-    push_bits(0, 3, dst, &bit_offset);
-    push_bits(0, 3, dst, &bit_offset);
+    push_bits(0, 3, dst, &bit_offset); // code length for "16": copy stuff
+    push_bits(0, 3, dst, &bit_offset); // code length for "17": copy stuff
+    push_bits(0, 3, dst, &bit_offset); // code length for "18": copy stuff
 
     push_bits(code_length_encoder.code_lengths[ 0], 3, dst, &bit_offset);
     push_bits(code_length_encoder.code_lengths[ 8], 3, dst, &bit_offset);
@@ -94,7 +95,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
      */
     uint32_t i;
     for(i = 0; i < 257; i++) {
-        push_bits(code_length_encoder.symbols[encoder.code_lengths[i]],
+        push_bits(code_length_encoder.codes[encoder.code_lengths[i]],
                   code_length_encoder.code_lengths[encoder.code_lengths[i]],
                   dst, &bit_offset);
     }
@@ -103,7 +104,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
      *        HDIST + 1 code lengths for the distance alphabet,
      *           encoded using the code length Huffman code
      */
-    push_bits(code_length_encoder.symbols[0],
+    push_bits(code_length_encoder.codes[0],
               code_length_encoder.code_lengths[0], dst, &bit_offset);
 
     /*
@@ -119,9 +120,9 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
      *  a single sequence of HLIT + HDIST + 258 values.
      */
     RETURN_ON_ERROR(huffman_encoder_encode(&encoder, src, num_bytes, dst,
-                                           &bit_offset));
+                                           &bit_offset))
     // Terminator symbol (i.e. compressed block ends here)
-    push_bits(encoder.symbols[256], encoder.code_lengths[256],
+    push_bits(encoder.codes[256], encoder.code_lengths[256],
               dst, &bit_offset);
 
     // zflush with uncompressed block to achieve byte-alignment
@@ -139,7 +140,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
 
 int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
                                          uint32_t num_bytes, uint8_t last_block) {
-    struct zlib_header {
+    struct deflate_block_header {
         uint8_t padding;
         uint8_t b_type;
         uint16_t len;
@@ -163,3 +164,6 @@ int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
 
     return dst - old_dst;
 }
+
+
+

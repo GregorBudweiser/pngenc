@@ -1,4 +1,4 @@
-#include "splitter.h"
+#include "encoder.h"
 #include "adler32.h"
 #include "huffman.h"
 #include "crc32.h"
@@ -114,10 +114,9 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     shdr[0] = 0x08; // CM = 8 (=deflate), CINFO = 0 (window size)
     shdr[1] = (31 - (((uint32_t)shdr[0]*256) % 31))
             | (0 << 5) | (0 << 6); // FCHECK | FDICT | FLEVEL;
-    RETURN_ON_ERROR(write_idat_block(shdr, 2, callback, user_data));
+    RETURN_ON_ERROR(write_idat_block(shdr, 2, callback, user_data))
 
     int32_t err = 0;
-
 #pragma omp parallel
 #pragma omp for ordered schedule(static, 1)
     for(y = 0; y < desc->height; y += num_rows) {

@@ -25,11 +25,14 @@ typedef enum _pngenc_result {
     PNGENC_ERROR             = -1,
     PNGENC_ERROR_FILE_IO     = -2,
     PNGENC_ERROR_INVALID_ARG = -3,
-    PNGENC_ERROR_FAILED_NODE_DESTROY = -4
+    PNGENC_ERROR_FAILED_NODE_DESTROY = -4,
+    PNGENC_ERROR_NOT_A_PNG   = -5,
+    PNGENC_ERROR_UNSUPPORTED = -6,
+    PNGENC_ERROR_INVALID_CHECKSUM = -7
 } pngenc_result;
 
 typedef struct _pngenc_image_desc {
-    const uint8_t * data;
+    uint8_t * data;
     uint32_t row_stride;
     uint32_t width;
     uint32_t height;
@@ -41,13 +44,9 @@ typedef struct _pngenc_image_desc {
 typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,
                                           void * user_data);
 
-struct _pngenc_encoder {
-    int32_t num_threads;
-    uint32_t buffer_size; // multiple of 64
-    uint8_t * tmp_buffers; // ptr to first buffer; must align to 64 bytes
-    uint8_t * dst_buffers; // ptr to first buffer; must align to 64 bytes
-};
 typedef struct _pngenc_encoder* pngenc_encoder;
+
+typedef struct _pngenc_decoder* pngenc_decoder;
 
 /**
  * Simply write png to specified file.
@@ -55,6 +54,9 @@ typedef struct _pngenc_encoder* pngenc_encoder;
 PNGENC_API
 int pngenc_write_file(const pngenc_image_desc * descriptor,
                       const char * filename);
+PNGENC_API
+int pngenc_read_file(pngenc_image_desc * descriptor,
+                     const char * filename);
 
 /**
  * Encode png and use callback for storing to custom location (e.g. in memory).
