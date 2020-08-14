@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include "pow.h"
 
-#define HUFF_MAX_SYMBOLS (286+32)
-#define HUFF_MAX_LITERALS 286
+#define HUFF_MAX_SYMBOLS (288+32)
+#define HUFF_MAX_LITERALS 288
 
 static const uint8_t bit_reverse_table_256[256] =
 {

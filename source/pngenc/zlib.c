@@ -51,8 +51,17 @@ int64_t decode_zlib_stream(uint8_t * dst, int32_t dst_size,
                         break;
                     }
                     case 1: // static compressed
+                        RETURN_ON_ERROR(read_static_header(src, src_size, &decoder->deflate))
+                        int ret = decode_data_full(&decoder->deflate, src, src_size, dst, dst_size);
+                        if(ret < 0) {
+                            return PNGENC_ERROR;
+                        }
+                        dst += ret;
+                        dst_size -= ret;
+                        break;
                     case 0: // uncompressed
                     default:
+                        printf("Compression type %d not supported!\n", block_type);
                         return PNGENC_ERROR_UNSUPPORTED;
                 }
             } while(!is_last_block);

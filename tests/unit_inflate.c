@@ -1,5 +1,32 @@
 #include "common.h"
 #include "../source/pngenc/inflate.h"
+#include "../source/pngenc/zlib.h"
+#include <string.h>
+
+int test_inflate_raw() {
+    zlib_codec zcodec;
+    zcodec.deflate.bit_offset = 0;
+    zcodec.buf_size = 128; // TODO: in or out?
+    zcodec.state = UNINITIALIZED;
+    huffman_codec_init(&zcodec.deflate.huff);
+    const uint8_t data[] = {
+        //0x78, 0xda, 0x63, 0x60, 0x60, 0x60, 0x60, 0x04, 0x02, 0x00, 0x00, 0x12, 0x00, 0x05
+        0x78, 0xda, 0x63, 0x60, 0x18, 0x05, 0xa3, 0x60, 0x14, 0x8c, 0x54, 0x00, 0x00, 0x04, 0x00, 0x00, 0x01
+    };
+    uint8_t decompressed[1024];
+    memset(decompressed, 0xFF, sizeof(decompressed));
+
+
+    int64_t result = decode_zlib_stream(decompressed, sizeof(decompressed), data, sizeof(data), &zcodec);
+    RETURN_ON_ERROR(result)
+
+    for (int i = 0; i < 1024; i++) {
+        printf("%d, ", decompressed[i]);
+    }
+    //huffman_encoder_print(&codec.huff, "data");
+            //RETURN_ON_ERROR(decode_data_full())
+    return 0;
+}
 
 /**
  * Can be used to generate the unit test function "test_get_length()".
@@ -11,54 +38,54 @@ void generate_test_get_length() {
         uint32_t max_bits = num_extra_bits > 0 ? (1u << num_extra_bits) - 1 : 0;
 
         // Output similar to RFC1951 table on page 11
-        //printf("%d: %d %d-%d\n", i, (uint32_t)num_extra_bits, get_length(0, num_extra_bits, i), get_length(max_bits, num_extra_bits, i));
+        //printf("%d: %d %d-%d\n", i, (uint32_t)num_extra_bits, get_length(0, i), get_length(max_bits, i));
 
-        printf("ASSERT_EQUAL(get_length(0, %d, %d), %d)\n", (uint32_t)num_extra_bits, i, get_length(0, num_extra_bits, i));
-        printf("ASSERT_EQUAL(get_length(%d, %d, %d), %d)\n", max_bits, (uint32_t)num_extra_bits, i, get_length(max_bits, num_extra_bits, i));
+        printf("ASSERT_EQUAL(get_length(0, %d), %d)\n", i, get_length(0, i));
+        printf("ASSERT_EQUAL(get_length(%d, %d), %d)\n", max_bits, i, get_length(max_bits, i));
     }
 }
 
 int test_get_length() {
-    ASSERT_EQUAL(get_length(0, 1, 265), 11)
-    ASSERT_EQUAL(get_length(1, 1, 265), 12)
-    ASSERT_EQUAL(get_length(0, 1, 266), 13)
-    ASSERT_EQUAL(get_length(1, 1, 266), 14)
-    ASSERT_EQUAL(get_length(0, 1, 267), 15)
-    ASSERT_EQUAL(get_length(1, 1, 267), 16)
-    ASSERT_EQUAL(get_length(0, 1, 268), 17)
-    ASSERT_EQUAL(get_length(1, 1, 268), 18)
-    ASSERT_EQUAL(get_length(0, 2, 269), 35)
-    ASSERT_EQUAL(get_length(3, 2, 269), 38)
-    ASSERT_EQUAL(get_length(0, 2, 270), 39)
-    ASSERT_EQUAL(get_length(3, 2, 270), 42)
-    ASSERT_EQUAL(get_length(0, 2, 271), 43)
-    ASSERT_EQUAL(get_length(3, 2, 271), 46)
-    ASSERT_EQUAL(get_length(0, 2, 272), 47)
-    ASSERT_EQUAL(get_length(3, 2, 272), 50)
-    ASSERT_EQUAL(get_length(0, 3, 273), 99)
-    ASSERT_EQUAL(get_length(7, 3, 273), 106)
-    ASSERT_EQUAL(get_length(0, 3, 274), 107)
-    ASSERT_EQUAL(get_length(7, 3, 274), 114)
-    ASSERT_EQUAL(get_length(0, 3, 275), 115)
-    ASSERT_EQUAL(get_length(7, 3, 275), 122)
-    ASSERT_EQUAL(get_length(0, 3, 276), 123)
-    ASSERT_EQUAL(get_length(7, 3, 276), 130)
-    ASSERT_EQUAL(get_length(0, 4, 277), 259)
-    ASSERT_EQUAL(get_length(15, 4, 277), 274)
-    ASSERT_EQUAL(get_length(0, 4, 278), 275)
-    ASSERT_EQUAL(get_length(15, 4, 278), 290)
-    ASSERT_EQUAL(get_length(0, 4, 279), 291)
-    ASSERT_EQUAL(get_length(15, 4, 279), 306)
-    ASSERT_EQUAL(get_length(0, 4, 280), 307)
-    ASSERT_EQUAL(get_length(15, 4, 280), 322)
-    ASSERT_EQUAL(get_length(0, 5, 281), 643)
-    ASSERT_EQUAL(get_length(31, 5, 281), 674)
-    ASSERT_EQUAL(get_length(0, 5, 282), 675)
-    ASSERT_EQUAL(get_length(31, 5, 282), 706)
-    ASSERT_EQUAL(get_length(0, 5, 283), 707)
-    ASSERT_EQUAL(get_length(31, 5, 283), 738)
-    ASSERT_EQUAL(get_length(0, 5, 284), 739)
-    ASSERT_EQUAL(get_length(31, 5, 284), 770)
+    ASSERT_EQUAL(get_length(0, 265), 11)
+    ASSERT_EQUAL(get_length(1, 265), 12)
+    ASSERT_EQUAL(get_length(0, 266), 13)
+    ASSERT_EQUAL(get_length(1, 266), 14)
+    ASSERT_EQUAL(get_length(0, 267), 15)
+    ASSERT_EQUAL(get_length(1, 267), 16)
+    ASSERT_EQUAL(get_length(0, 268), 17)
+    ASSERT_EQUAL(get_length(1, 268), 18)
+    ASSERT_EQUAL(get_length(0, 269), 19)
+    ASSERT_EQUAL(get_length(3, 269), 22)
+    ASSERT_EQUAL(get_length(0, 270), 23)
+    ASSERT_EQUAL(get_length(3, 270), 26)
+    ASSERT_EQUAL(get_length(0, 271), 27)
+    ASSERT_EQUAL(get_length(3, 271), 30)
+    ASSERT_EQUAL(get_length(0, 272), 31)
+    ASSERT_EQUAL(get_length(3, 272), 34)
+    ASSERT_EQUAL(get_length(0, 273), 35)
+    ASSERT_EQUAL(get_length(7, 273), 42)
+    ASSERT_EQUAL(get_length(0, 274), 43)
+    ASSERT_EQUAL(get_length(7, 274), 50)
+    ASSERT_EQUAL(get_length(0, 275), 51)
+    ASSERT_EQUAL(get_length(7, 275), 58)
+    ASSERT_EQUAL(get_length(0, 276), 59)
+    ASSERT_EQUAL(get_length(7, 276), 66)
+    ASSERT_EQUAL(get_length(0, 277), 67)
+    ASSERT_EQUAL(get_length(15, 277), 82)
+    ASSERT_EQUAL(get_length(0, 278), 83)
+    ASSERT_EQUAL(get_length(15, 278), 98)
+    ASSERT_EQUAL(get_length(0, 279), 99)
+    ASSERT_EQUAL(get_length(15, 279), 114)
+    ASSERT_EQUAL(get_length(0, 280), 115)
+    ASSERT_EQUAL(get_length(15, 280), 130)
+    ASSERT_EQUAL(get_length(0, 281), 131)
+    ASSERT_EQUAL(get_length(31, 281), 162)
+    ASSERT_EQUAL(get_length(0, 282), 163)
+    ASSERT_EQUAL(get_length(31, 282), 194)
+    ASSERT_EQUAL(get_length(0, 283), 195)
+    ASSERT_EQUAL(get_length(31, 283), 226)
+    ASSERT_EQUAL(get_length(0, 284), 227)
+    ASSERT_EQUAL(get_length(31, 284), 258)
     return 0;
 }
 
@@ -134,6 +161,7 @@ int test_get_dist() {
 int unit_inflate(int argc, char* argv[]) {
     RETURN_ON_ERROR(test_get_length())
     RETURN_ON_ERROR(test_get_dist())
+    RETURN_ON_ERROR(test_inflate_raw())
     return 0;
 }
 

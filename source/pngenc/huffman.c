@@ -314,7 +314,7 @@ int huffman_encoder_build_codes_from_lengths2(const uint8_t * code_lengths,
     }
 
     // Generate final codes
-    for (i = 0;  i <= n; i++) {
+    for (i = 0;  i < n; i++) {
         uint8_t len = code_lengths[i];
         symbols[i] = (uint16_t)next_code[len];
         next_code[len]++;
@@ -470,14 +470,20 @@ uint32_t huffman_encoder_get_num_literals(const huffman_codec * encoder) {
 
 void huffman_encoder_print(const huffman_codec * encoder, const char * name) {
     printf("Huffman code for %s\n", name);
-    for(int i = 0; i < HUFF_MAX_SYMBOLS; i++) {
+    for(int i = 0; i < HUFF_MAX_LITERALS; i++) {
         if(encoder->code_lengths[i]) {
-            printf(" > Code %d: %d bits (%d)\n", i,
+            printf(" > Literal Code %d: %d bits (%d)\n", i,
                    encoder->code_lengths[i], encoder->codes[i]);
         }
     }
+    for(int i = HUFF_MAX_LITERALS; i < HUFF_MAX_SYMBOLS; i++) {
+        if(encoder->code_lengths[i]) {
+            printf(" > Distance Code %d: %d bits (%d)\n", i,
+                   encoder->code_lengths[i], encoder->codes[i]);
+        }
+    }
+    fflush(stdout);
 }
-
 
 /**
  * Push bits into a buffer at specified offset in bits.

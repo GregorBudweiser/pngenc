@@ -176,6 +176,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
 #pragma omp ordered
         {
+            printf("%d\n", omp_get_thread_num());
             if(callback(idat_ptr, (uint32_t)result, user_data) < 0) {
                 err = 1;
             }

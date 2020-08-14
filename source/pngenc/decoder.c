@@ -70,8 +70,8 @@ int pngenc_decode(pngenc_decoder decoder,
         }
     }
     if(offset) {
-        // TODO..
-        uint8_t zlib_output_buf[1024*1024];
+        // TODO.. free :S
+        uint8_t * zlib_output_buf = malloc(10*1024*1024);
 
 
         int64_t bytes_decoded = decode_zlib_stream(

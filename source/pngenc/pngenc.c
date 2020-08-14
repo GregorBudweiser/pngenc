@@ -83,7 +83,7 @@ int pngenc_read(pngenc_decoder decoder,
                 const char * filename) {
 
     FILE * file = fopen(filename, "rb");
-    if (!file)
+    if (file == NULL)
         return PNGENC_ERROR_FILE_IO;
 
     int result = pngenc_decode(decoder, descriptor, file);

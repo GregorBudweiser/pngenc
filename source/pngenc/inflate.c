@@ -83,14 +83,14 @@ void build_sym_lut2(uint32_t lut_size, const huffman_codec * encoder,
                     skip_bits_lut[i] = current_code_len;
                 }
             }
-
         }
     }
 
     uint32_t err = 0;
     for(uint32_t i = 0; i < lut_size; i++) {
-        if(sym_lut[i] == 0xFFFF) {
+        if(sym_lut[i] == 0xFFFF || skip_bits_lut[i] == 0) {
             err++;
+            printf("err: 0x%04x\n", i);
         }
     }
     printf("%d/%d errors\n", err, lut_size);
@@ -192,14 +192,11 @@ uint8_t get_num_extra_bits(uint32_t symbol_idx) {
     return (uint8_t)((symbol_idx - 261u)/4u);
 }
 
-uint32_t base_value(uint8_t num_extra_bits) {
-    return 7u + (((1u << num_extra_bits) - 1u) << 2);
-}
-
-uint32_t get_length(uint32_t extra_bits, uint8_t num_extra_bits,
+uint32_t get_length(uint32_t extra_bits,
                     uint32_t symbol_idx) {
-    return base_value(num_extra_bits)
-         + (1u << num_extra_bits)*(symbol_idx - (261u + 4u)) + extra_bits;
+    const uint32_t x = symbol_idx - 265u;
+    const uint32_t i = 1 + x/4;
+    return 11 + 8*((1 << (i-1)) - 1) + (1 << i)*(x % 4) + extra_bits;
 }
 
 uint8_t get_num_extra_bits_dist(uint32_t symbol_idx) {
@@ -221,6 +218,7 @@ int decode_data_full(deflate_codec * deflate,
                      const uint8_t * src, uint32_t src_size,
                      uint8_t * dst, uint32_t dst_size) {
 
+    //huffman_encoder_print(&deflate->huff, "input");
     uint8_t * const dst_old  = dst;
 
     // literal + length codes
@@ -234,6 +232,8 @@ int decode_data_full(deflate_codec * deflate,
     uint16_t sym_idx_lut_dist[1 << 15];
     build_sym_lut2(1 << 15, &deflate->huff, sym_idx_lut_dist, skip_code_dist,
                    HUFF_MAX_LITERALS, HUFF_MAX_SYMBOLS, 15);
+
+    fflush(stdout);
 
     const uint64_t start = deflate->bit_offset;
 
@@ -250,6 +250,8 @@ int decode_data_full(deflate_codec * deflate,
 
     uint32_t literals = 0;
     uint32_t match = 0;
+
+    uint32_t bytes_written = 0;
 
     while(1)  { // Terminator symbol / end of stream
         if(bits_remaining < 32) {
@@ -276,7 +278,7 @@ int decode_data_full(deflate_codec * deflate,
                 uint32_t extra_bits = pop_bits(num_extra_bits, src, &deflate->bit_offset);
                 bits_remaining -= num_extra_bits;
                 window >>= num_extra_bits;
-                len = get_length(extra_bits, num_extra_bits, current_sym_idx);
+                len = get_length(extra_bits, current_sym_idx);
             } else {
                 len = current_sym_idx - 254;
             }
@@ -313,15 +315,17 @@ int decode_data_full(deflate_codec * deflate,
             //printf("backward match with len: %d; dist: %d\n", len, dist);
             //memcpy(dst, dst - dist, len); // <-- does handle overlap which is not what we need
             for(uint32_t i = 0; i < len; i++) {
-                dst[i] = dst[(int)i-(int)dist];
+                dst[0] = dst[-(int)dist];
+                dst++;
             }
-            dst += len;
+            bytes_written += len;
         } else if (current_sym_idx == 256) {
             break;
         } else { // literal
             *dst = (uint8_t)current_sym_idx;
             dst++;
             literals++;
+            bytes_written++;
         }
     }
 
@@ -394,3 +398,44 @@ int64_t read_dynamic_header(const uint8_t * src, uint32_t src_size,
     return PNGENC_SUCCESS;
 }
 
+/**
+ * TODO: where to put this function?
+ *
+ * see https://www.w3.org/Graphics/PNG/RFC-1951#fixed
+ */
+int init_huffman_static(huffman_codec * huff) {
+    for(size_t i = 0; i < 144; i++) {
+        huff->code_lengths[i] = 8;
+    }
+    for(size_t i = 144; i < 256; i++) {
+        huff->code_lengths[i] = 9;
+    }
+    for(size_t i = 256; i < 280; i++) {
+        huff->code_lengths[i] = 7;
+    }
+    for(size_t i = 280; i < 288; i++) {
+        huff->code_lengths[i] = 8;
+    }
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths2(
+                        huff->code_lengths,
+                        huff->codes, 288));
+
+
+    // TODO: there is overlap between first and second call. is it a problem???
+    for(size_t i = HUFF_MAX_LITERALS; i < HUFF_MAX_SYMBOLS; i++) {
+        huff->code_lengths[i] = 5;
+    }
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths2(
+                        huff->code_lengths+HUFF_MAX_LITERALS,
+                        huff->codes+HUFF_MAX_LITERALS, 32))
+
+
+    huffman_encoder_print(huff, "woot?");
+    return 0;
+}
+
+int64_t read_static_header(const uint8_t * src, uint32_t src_size,
+                           deflate_codec * deflate) {
+    RETURN_ON_ERROR(init_huffman_static(&deflate->huff));
+    return 0;
+}
