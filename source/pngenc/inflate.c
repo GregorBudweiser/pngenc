@@ -320,6 +320,7 @@ int decode_data_full(deflate_codec * deflate,
             }
             bytes_written += len;
         } else if (current_sym_idx == 256) {
+            printf("we've hit terminator symbol\n");
             break;
         } else { // literal
             *dst = (uint8_t)current_sym_idx;

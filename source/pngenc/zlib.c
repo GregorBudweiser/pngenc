@@ -1,14 +1,21 @@
 #include "zlib.h"
 #include "pngenc.h"
 #include "utils.h"
+#include "adler32.h"
 #include <stdio.h>
 
 int64_t decode_zlib_stream(uint8_t * dst, int32_t dst_size,
                            const uint8_t * src, uint32_t src_size,
                            zlib_codec *decoder) {
+    if (src_size == 0) {
+        return 0;
+    }
 
     printf("decode %ukb..\n", src_size/1024);
     // TODO: check dst_size > 300 bytes...
+
+    const uint8_t * old_dst = dst;
+    uint32_t old_dst_size = dst_size;
 
     switch(decoder->state) {
         case UNINITIALIZED:
@@ -33,6 +40,7 @@ int64_t decode_zlib_stream(uint8_t * dst, int32_t dst_size,
             // fallthrough
         case READY:
         {
+            // TODO: Handle case where not enough data is given...
             uint32_t is_last_block;
             do {
                 is_last_block = pop_bits(1, src, &decoder->deflate.bit_offset);
@@ -65,6 +73,20 @@ int64_t decode_zlib_stream(uint8_t * dst, int32_t dst_size,
                         return PNGENC_ERROR_UNSUPPORTED;
                 }
             } while(!is_last_block);
+
+            uint64_t byte_offset = (decoder->deflate.bit_offset+7) / 8;
+            uint32_t checksum = *((const uint32_t*)(src+byte_offset));
+            checksum = swap_endianness32(checksum);
+            printf("Read checksum: 0x%08X\n", checksum);
+
+            // adler32 checksum
+            pngenc_adler32 adler;
+            adler_init(&adler);
+            adler_update(&adler, old_dst, old_dst_size);
+            printf("Computed checksum: 0x%08X\n", adler_get_checksum(&adler));
+
+            printf("Remaining dst_size: %d\n", dst_size);
+            return byte_offset;
         }
 
         case NEEDS_MORE_INPUT:

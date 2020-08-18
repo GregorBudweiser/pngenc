@@ -31,10 +31,8 @@ int pngenc_decode(pngenc_decoder decoder,
     uint32_t offset = 0;
     png_chunk chunk;
     memset(&chunk, 0, sizeof(png_chunk));
-    while(memcmp(chunk.name, "IEND", 4) != 0) {
+    do {
         RETURN_ON_ERROR(read_png_chunk_header(&chunk, file))
-        //printf("got chunk: %c%c%c%c\n", chunk.name[0],
-        //       chunk.name[1], chunk.name[2], chunk.name[3]);
 
         if(memcmp(chunk.name, "IDAT", 4) == 0) {
             uint32_t bytes_remain = chunk.size;
@@ -44,10 +42,9 @@ int pngenc_decode(pngenc_decoder decoder,
                 fread(decoder->zlib.buf + offset, 1, bytes_to_read, file);
                 bytes_remain -= bytes_to_read;
                 offset += bytes_to_read;
-                if(offset == decoder->zlib.buf_size) {
-                    int64_t bytes_decoded = decode_zlib_stream(
-                                descriptor->data, (size_t)num_bytes_img_data,
-                                decoder->zlib.buf, decoder->zlib.buf_size, decoder);
+                if(offset == decoder->zlib.buf_size && bytes_remain > 0) {
+                    printf("weird...\n");
+                    return PNGENC_ERROR_NOT_A_PNG;
                 }
             }
             //printf("added %ukb..\n", chunk.size/1024);
@@ -64,93 +61,111 @@ int pngenc_decode(pngenc_decoder decoder,
             }
 
         } else {
+            // Skipping chunk
+            printf("skipping chunk: %c%c%c%c\n", chunk.name[0],
+                   chunk.name[1], chunk.name[2], chunk.name[3]);
+
             // TODO: handle sizes > 2GB
             assert(chunk.size <= 0x7FFFFFFF);
-            int seek = fseek(file, 4+(int)chunk.size, SEEK_CUR);
-        }
-    }
-    if(offset) {
-        // TODO.. free :S
-        uint8_t * zlib_output_buf = malloc(10*1024*1024);
-
-
-        int64_t bytes_decoded = decode_zlib_stream(
-                    zlib_output_buf, (int32_t)num_bytes_img_data,
-                    decoder->zlib.buf, offset, &decoder->zlib);
-
-        printf("Decoded %d bytes..\n", (int)bytes_decoded);
-
-        for(uint32_t y = 0; y < descriptor->height; y++) {
-            const uint8_t * src = zlib_output_buf + y*(get_num_bytes_per_row(descriptor)+1);
-            uint8_t row_filter = *src++;
-            uint8_t * dst = descriptor->data + y*get_num_bytes_per_row(descriptor);
-            uint8_t * prior = descriptor->data + (y-1)*get_num_bytes_per_row(descriptor);
-            // TODO: only works for uint8_t
-            switch(row_filter) {
-                case 0: {
-                    for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
-                        dst[x] = src[x];
-                    }
-                    break;
-                }
-                case 1: {
-                    for(uint32_t x = 0; x < descriptor->num_channels; x++) {
-                        dst[x] = src[x];
-                    }
-                    for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
-                        dst[x] = dst[x-descriptor->num_channels] + src[x];
-                    }
-                    break;
-                }
-                case 2: {
-                    for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
-                        dst[x] = src[x] + prior[x];
-                    }
-                    break;
-                }
-                case 3: {
-                    for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
-                        dst[x] = src[x] - prior[x];
-                    }
-                    break;
-                }
-                case 4: {
-                    for(uint32_t x = 0; x < descriptor->num_channels; x++) {
-                        dst[x] = src[x] + paeth_predictor(0, prior[x], 0);
-                    }
-                    for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
-                        // dst = paeth(x) + prediction of surrounding pixels
-                        dst[x] = src[x] + paeth_predictor(dst[x-descriptor->num_channels], prior[x],
-                                                          prior[x-descriptor->num_channels]);
-                    }
-                    break;
-                }
-
-                default: {
-                    printf("Row %d: invalid row filter: %d\n", (int)y, (int)row_filter);
-                    for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
-                        dst[x] = 0;
-                    }
-                    break;
-                }
+            if(fseek(file, 4+(int)chunk.size, SEEK_CUR)) {
+                return PNGENC_ERROR_NOT_A_PNG;
             }
         }
-    }
+    } while(memcmp(chunk.name, "IEND", 4) != 0);
 
+    // TODO: Move allocation into decoder setup..
+    uint8_t * zlib_output_buf = malloc(num_bytes_img_data+descriptor->height);
+
+    int64_t bytes_decoded = decode_zlib_stream(
+                zlib_output_buf,
+                (int32_t)(num_bytes_img_data+descriptor->height),
+                decoder->zlib.buf, offset, &decoder->zlib);
+    printf("Decoded %d bytes..\n", (int)bytes_decoded);
+    pngenc_defilter(descriptor, zlib_output_buf);
+
+    free(zlib_output_buf);
     return PNGENC_SUCCESS;
 }
 
-uint8_t paeth_predictor(uint8_t a, uint8_t b, uint8_t c) {
+
+void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_output_buf) {
+    for(uint32_t y = 0; y < descriptor->height; y++) {
+        const uint8_t * src = zlib_output_buf + y*(get_num_bytes_per_row(descriptor)+1);
+        const uint8_t row_filter = *src++;
+        const uint8_t * prior = descriptor->data + (y-1)*get_num_bytes_per_row(descriptor);
+        uint8_t * dst = descriptor->data + y*get_num_bytes_per_row(descriptor);
+        // TODO: only works for uint8_t
+        switch(row_filter) {
+            case 0: {
+                // None
+                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                    dst[x] = src[x];
+                }
+                break;
+            }
+            case 1: {
+                // Sub (delta-x)
+                for(uint32_t x = 0; x < descriptor->num_channels; x++) {
+                    dst[x] = src[x];
+                }
+                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                    dst[x] = dst[x-descriptor->num_channels] + src[x];
+                }
+                break;
+            }
+            case 2: {
+                // Up (delta-y)
+                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                    dst[x] = src[x] + prior[x];
+                }
+                break;
+            }
+            case 3: {
+                // Average (delta-avg(x,y))
+                for(uint32_t x = 0; x < descriptor->num_channels; x++) {
+                    dst[x] = src[x] + prior[x]/2;
+                }
+                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                    dst[x] = src[x] + (dst[x-descriptor->num_channels] + prior[x])/2;
+                }
+                break;
+            }
+            case 4: {
+                // Paeth (extrapolation)
+                for(uint32_t x = 0; x < descriptor->num_channels; x++) {
+                    dst[x] = src[x] + paeth_predictor(0, prior[x], 0);
+                }
+                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                    // dst = paeth(x) + prediction of surrounding pixels
+                    dst[x] = src[x] + paeth_predictor(dst[x-descriptor->num_channels], prior[x],
+                                                      prior[x-descriptor->num_channels]);
+                }
+                break;
+            }
+
+            default: {
+                // TODO: return error
+                printf("Row %d: invalid row filter: %d\n", (int)y, (int)row_filter);
+                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                    dst[x] = 0;
+                }
+                break;
+            }
+        }
+    }
+}
+
+uint8_t paeth_predictor(uint32_t a, uint32_t b, uint32_t c) {
         // a = left, b = above, c = upper left
-        int32_t p = (uint32_t)a + (uint32_t)b - (uint32_t)c;       // initial estimate
-        int pa = abs(p - a);      // distances to a, b, c
-        int pb = abs(p - b);
-        int pc = abs(p - c);
+        int32_t p = (int)a + (int)b - (int)c;       // initial estimate
+        int pa = abs(p - (int)a);      // distances to a, b, c
+        int pb = abs(p - (int)b);
+        int pc = abs(p - (int)c);
         // return nearest of a,b,c,
         // breaking ties in order a,b,c.
-        if (pa <= pb && pa <= pc)
+        if(pa <= pb && pa <= pc)
             return a;
-        else if (pb <= pc)
+        else if(pb <= pc)
              return b;
         else
              return c;
