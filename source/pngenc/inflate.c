@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <string.h>
 
+static const uint16_t length_tbl[29] = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258 };
+static const uint16_t * const lengths = length_tbl - 257;
+static const uint16_t dists[30] = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577 };
+
 /**
  * Build symbol lookup table. The table allows to "parse" the next
  * symbol given a stream of bytes such that:
@@ -86,14 +90,14 @@ void build_sym_lut2(uint32_t lut_size, const huffman_codec * encoder,
         }
     }
 
-    uint32_t err = 0;
+    /*uint32_t err = 0;
     for(uint32_t i = 0; i < lut_size; i++) {
         if(sym_lut[i] == 0xFFFF || skip_bits_lut[i] == 0) {
             err++;
             printf("err: 0x%04x\n", i);
         }
     }
-    printf("%d/%d errors\n", err, lut_size);
+    printf("%d/%d errors\n", err, lut_size);*/
 }
 
 
@@ -253,9 +257,9 @@ int decode_data_full(deflate_codec * deflate,
 
     uint32_t bytes_written = 0;
 
-    while(1)  { // Terminator symbol / end of stream
+    while(1)  {
         if(bits_remaining < 32) {
-            uint64_t next = ((uint64_t)*ptr++) << bits_remaining;
+            uint64_t next = ((uint64_t)(*ptr++)) << bits_remaining;
             window |= next;
             bits_remaining += 32;
             num_bytes_read += 4;
@@ -278,7 +282,7 @@ int decode_data_full(deflate_codec * deflate,
                 uint32_t extra_bits = pop_bits(num_extra_bits, src, &deflate->bit_offset);
                 bits_remaining -= num_extra_bits;
                 window >>= num_extra_bits;
-                len = get_length(extra_bits, current_sym_idx);
+                len = lengths[current_sym_idx] + extra_bits; //get_length(extra_bits, current_sym_idx);
             } else {
                 len = current_sym_idx - 254;
             }
@@ -306,7 +310,7 @@ int decode_data_full(deflate_codec * deflate,
                 uint32_t extra_bits = pop_bits(num_extra_bits, src, &deflate->bit_offset);
                 bits_remaining -= num_extra_bits;
                 window >>= num_extra_bits;
-                dist = get_dist(extra_bits, num_extra_bits, dist_sym);
+                dist = dists[dist_sym] + extra_bits; //get_dist(extra_bits, num_extra_bits, dist_sym);
             } else {
                 dist = dist_sym + 1;
             }
@@ -320,7 +324,6 @@ int decode_data_full(deflate_codec * deflate,
             }
             bytes_written += len;
         } else if (current_sym_idx == 256) {
-            printf("we've hit terminator symbol\n");
             break;
         } else { // literal
             *dst = (uint8_t)current_sym_idx;
@@ -429,9 +432,6 @@ int init_huffman_static(huffman_codec * huff) {
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths2(
                         huff->code_lengths+HUFF_MAX_LITERALS,
                         huff->codes+HUFF_MAX_LITERALS, 32))
-
-
-    huffman_encoder_print(huff, "woot?");
     return 0;
 }
 

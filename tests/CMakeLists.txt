@@ -44,8 +44,6 @@ create_test(perf_huffman)
 create_test(perf_adler)
 create_test(perf_mt)
 
-create_test(blah)
-
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
                          "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.h")

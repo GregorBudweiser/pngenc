@@ -10,21 +10,22 @@ int test_inflate_raw() {
     zcodec.state = UNINITIALIZED;
     huffman_codec_init(&zcodec.deflate.huff);
     const uint8_t data[] = {
-        //0x78, 0xda, 0x63, 0x60, 0x60, 0x60, 0x60, 0x04, 0x02, 0x00, 0x00, 0x12, 0x00, 0x05
+        // 1024 zeroes compressed (deflate block created by QT's qCompress())
         0x78, 0xda, 0x63, 0x60, 0x18, 0x05, 0xa3, 0x60, 0x14, 0x8c, 0x54, 0x00, 0x00, 0x04, 0x00, 0x00, 0x01
     };
+
     uint8_t decompressed[1024];
     memset(decompressed, 0xFF, sizeof(decompressed));
 
 
     int64_t result = decode_zlib_stream(decompressed, sizeof(decompressed), data, sizeof(data), &zcodec);
-    RETURN_ON_ERROR(result)
-
-    for (int i = 0; i < 1024; i++) {
-        printf("%d, ", decompressed[i]);
+    if(result < 0) {
+        return (int)result;
     }
-    //huffman_encoder_print(&codec.huff, "data");
-            //RETURN_ON_ERROR(decode_data_full())
+
+    for(int i = 0; i < 1024; i++) {
+        ASSERT_EQUAL(decompressed[i], 0);
+    }
     return 0;
 }
 

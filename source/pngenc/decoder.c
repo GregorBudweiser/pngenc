@@ -89,16 +89,17 @@ int pngenc_decode(pngenc_decoder decoder,
 
 
 void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_output_buf) {
+    const uint64_t bytes_per_row = get_num_bytes_per_row(descriptor);
     for(uint32_t y = 0; y < descriptor->height; y++) {
-        const uint8_t * src = zlib_output_buf + y*(get_num_bytes_per_row(descriptor)+1);
+        const uint8_t * src = zlib_output_buf + y*(bytes_per_row+1);
         const uint8_t row_filter = *src++;
-        const uint8_t * prior = descriptor->data + (y-1)*get_num_bytes_per_row(descriptor);
-        uint8_t * dst = descriptor->data + y*get_num_bytes_per_row(descriptor);
+        const uint8_t * prior = descriptor->data + (y-1)*bytes_per_row;
+        uint8_t * dst = descriptor->data + y*bytes_per_row;
         // TODO: only works for uint8_t
         switch(row_filter) {
             case 0: {
                 // None
-                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = 0; x < bytes_per_row; x++) {
                     dst[x] = src[x];
                 }
                 break;
@@ -108,14 +109,14 @@ void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_
                 for(uint32_t x = 0; x < descriptor->num_channels; x++) {
                     dst[x] = src[x];
                 }
-                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = descriptor->num_channels; x < bytes_per_row; x++) {
                     dst[x] = dst[x-descriptor->num_channels] + src[x];
                 }
                 break;
             }
             case 2: {
                 // Up (delta-y)
-                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = 0; x < bytes_per_row; x++) {
                     dst[x] = src[x] + prior[x];
                 }
                 break;
@@ -125,7 +126,7 @@ void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_
                 for(uint32_t x = 0; x < descriptor->num_channels; x++) {
                     dst[x] = src[x] + prior[x]/2;
                 }
-                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = descriptor->num_channels; x < bytes_per_row; x++) {
                     dst[x] = src[x] + (dst[x-descriptor->num_channels] + prior[x])/2;
                 }
                 break;
@@ -135,7 +136,7 @@ void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_
                 for(uint32_t x = 0; x < descriptor->num_channels; x++) {
                     dst[x] = src[x] + paeth_predictor(0, prior[x], 0);
                 }
-                for(uint32_t x = descriptor->num_channels; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = descriptor->num_channels; x < bytes_per_row; x++) {
                     // dst = paeth(x) + prediction of surrounding pixels
                     dst[x] = src[x] + paeth_predictor(dst[x-descriptor->num_channels], prior[x],
                                                       prior[x-descriptor->num_channels]);
@@ -146,7 +147,7 @@ void pngenc_defilter(const pngenc_image_desc * descriptor, const uint8_t * zlib_
             default: {
                 // TODO: return error
                 printf("Row %d: invalid row filter: %d\n", (int)y, (int)row_filter);
-                for(uint32_t x = 0; x < get_num_bytes_per_row(descriptor); x++) {
+                for(uint32_t x = 0; x < bytes_per_row; x++) {
                     dst[x] = 0;
                 }
                 break;
