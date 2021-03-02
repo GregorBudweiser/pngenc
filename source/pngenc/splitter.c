@@ -24,14 +24,13 @@ uint16_t swap_uint16(uint16_t val) {
 uint32_t prepare_data_filtered(const pngenc_image_desc * image,
                                uint32_t yStart, uint32_t yEnd, uint8_t * dst) {
     uint64_t y;
-    const uint64_t length = image->width * image->num_channels
-                          * (image->bit_depth / 8);
+    const uint64_t bytes_per_row = get_num_bytes_per_row(image);
     for(y = yStart; y < yEnd; y++) {
+        const uint8_t * src = image->data + y*image->row_stride;
         *dst++ = 1; // row filter
         if(image->bit_depth == 8) {
             // delta-x row filter
             const uint8_t c = image->num_channels;
-            const uint8_t * src = image->data + y*image->row_stride;
 
             uint64_t i;
             for(i = 0; i < c; i++)
@@ -47,32 +46,32 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
             for(; i < length; i++)
                 dst[i] = src[i] - src[i-c];
 #else
-            for(i = c; i < length; i++)
+            for(i = c; i < bytes_per_row; i++)
                 dst[i] = src[i] - src[i-c];
 #endif
-            dst += length;
+            dst += bytes_per_row;
 
         } else { // 16bit
-            // delta-x row filter
-            const uint64_t c = image->num_channels;
-            const uint16_t * src = (const uint16_t*)(image->data + y*image->row_stride);
-            uint16_t * dst16 = (uint16_t*)dst;
+            // delta-x row filter filters MSB and LSB separately
+            // i.e. the filter is byte based rather than word based
+            const uint8_t c2 = image->num_channels*2;
 
             uint64_t i;
-            for(i = 0; i < c; i++)
-                dst16[i] = swap_uint16(src[i]);
+            for(i = 0; i < c2; i+=2) {
+                dst[i] = src[i+1];
+                dst[i+1] = src[i];
+            }
 
-            // TODO: Alignment of dst broken because of row filter..
-            //       This will only work on x86, ARMv7/ARM11 or newer
-            for(i = c; i < length/2; i++)
-                dst16[i] = swap_uint16(src[i]) - swap_uint16(src[i-c]);
+            for(i = c2; i < bytes_per_row; i+=2) {
+                dst[i] = src[i+1] - src[i+1-c2];
+                dst[i+1] = src[1] - src[1-c2];
+            }
 
-            dst += length;
+            dst += bytes_per_row;
         }
     }
 
-    return (yEnd - yStart)*(image->width * image->num_channels
-                            * image->bit_depth / 8 + 1);
+    return (yEnd - yStart)*(bytes_per_row + 1);
 }
 
 /**
@@ -82,16 +81,15 @@ uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
                                  uint32_t yStart, uint32_t yEnd,
                                  uint8_t * dst) {
     uint64_t y;
-    const uint32_t length = image->width * image->num_channels
-                          * (image->bit_depth / 8);
+    const uint32_t bytes_per_row = get_num_bytes_per_row(image);
     for(y = yStart; y < yEnd; y++) {
         *dst++ = 0; // row filter
         const uint8_t * src = image->data + y*image->row_stride;
-        memcpy(dst, src, length);
-        dst +=length;
+        memcpy(dst, src, bytes_per_row);
+        dst += bytes_per_row;
     }
 
-    return (yEnd - yStart)*(length + 1);
+    return (yEnd - yStart)*(bytes_per_row + 1);
 }
 
 /**
