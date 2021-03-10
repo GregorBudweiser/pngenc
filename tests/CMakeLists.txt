@@ -46,8 +46,6 @@ create_test(perf_mt)
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"
                          "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.h")
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/main.c")
-list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/java.h")
-list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/java.c")
 # remove dll interface sources and test them via dll
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/pngenc.h")
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/pngenc.c")
