@@ -57,6 +57,6 @@ add_executable(${test_prefix} ${test_sources} ${pngenc_sources} "${CMAKE_CURRENT
 target_link_libraries(${test_prefix} pngenc)
 
 # add libm on gnu/linux
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     target_link_libraries(${test_prefix} m)
 endif()
