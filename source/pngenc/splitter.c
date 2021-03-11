@@ -37,13 +37,13 @@ uint32_t prepare_data_filtered(const pngenc_image_desc * image,
                 dst[i] = src[i];
 #if defined(_MSC_VER) && defined(_WIN64)
             // Use SSE impl only for MSVC. GCC and Clang do this already
-            for(i = 0; i < length-32; i+=16) {
+            for(i = 0; i < bytes_per_row-32; i+=16) {
                 __m128i a = _mm_loadu_si128((const __m128i*)(src + i));
                 __m128i b = _mm_loadu_si128((const __m128i*)(src +c + i));
                 _mm_storeu_si128((__m128i*)(dst + c + i), _mm_sub_epi8(b, a));
             }
             // trailing bytes
-            for(; i < length; i++)
+            for(; i < bytes_per_row; i++)
                 dst[i] = src[i] - src[i-c];
 #else
             for(i = c; i < bytes_per_row; i++)
