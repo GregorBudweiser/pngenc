@@ -51,7 +51,7 @@ int integration_pipeline(int argc, char* argv[]) {
     const char * devNull = "/dev/null";
 #endif
 
-    pngenc_encoder encoder = pngenc_create_encoder();
+    pngenc_encoder encoder = pngenc_create_encoder_default();
     for(int i = 0; i < 20; i++) {
         desc.data = copies[i % 8];
         TIMING_START;

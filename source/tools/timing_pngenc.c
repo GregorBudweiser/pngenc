@@ -42,7 +42,7 @@ int main() {
         for(int i = 0; i < 10; i++)
         {
             TIMING_START;
-            sprintf(name, "out%03d.png", i);
+            sprintf(name, compressed ? "compressed_%03d.png" : "uncompressed_%03d.png", i);
             RETURN_ON_ERROR(pngenc_write_file(&desc, name));
             TIMING_END;
         }

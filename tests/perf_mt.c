@@ -48,7 +48,7 @@ int perf_mt(int argc, char* argv[]) {
     desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
     desc.bit_depth = 8;
 
-    pngenc_encoder encoder = pngenc_create_encoder();
+    pngenc_encoder encoder = pngenc_create_encoder_default();
     for(int i = 0; i < 20; i++) {
         TIMING_START;
         pngenc_encode(encoder, &desc, null_callback, NULL);

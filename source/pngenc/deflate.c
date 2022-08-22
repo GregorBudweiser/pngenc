@@ -23,7 +23,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
     huffman_encoder_add(encoder.histogram, src, num_bytes);
     encoder.histogram[256] = 1; // terminator
 
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15, 0.95));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, 15, POW_95));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
     huffman_encoder code_length_encoder;
@@ -34,7 +34,7 @@ int64_t write_deflate_block_compressed(uint8_t * dst, const uint8_t * src,
     code_length_encoder.histogram[0]++;
 
     // code length codes limited to 7 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, 0.8));
+    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80));
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
 
     /*

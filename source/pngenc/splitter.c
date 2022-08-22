@@ -100,12 +100,15 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
     pngenc_adler32 sum;
     adler_init(&sum);
-    uint32_t num_rows = encoder->buffer_size/desc->row_stride + 1;
+    uint32_t num_rows = encoder->buffer_size/(get_num_bytes_per_row(desc) + 1); // divide by filtered row size => allows us to keep tmp buffers smaller (consider desc->rowStride == 1)
+    if (num_rows == 0) {
+        return PNGENC_ERROR_INVALID_BUF;
+    }
     int64_t y;
 
     uint32_t num_iterations = (desc->height - 1)/num_rows + 1;
     omp_set_num_threads(min_i32((int32_t)num_iterations,
-                                omp_get_max_threads()));
+                                encoder->num_threads));
 
     // zlib stream header..
     uint8_t shdr[2];
@@ -119,11 +122,12 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 #pragma omp parallel
 #pragma omp for ordered schedule(static, 1)
     for(y = 0; y < desc->height; y += num_rows) {
-        uint32_t yNext = min_u32((uint32_t)y+num_rows, desc->height);
+        const uint32_t yNext = min_u32((uint32_t)y+num_rows, desc->height);
 
         // intermediate result buffers
-        uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
-        uint8_t * dst = encoder->dst_buffers + (encoder->buffer_size*2*(uint32_t)omp_get_thread_num());
+        const uint32_t tid = omp_get_thread_num();
+        uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*tid);
+        uint8_t * dst = encoder->dst_buffers + (encoder->buffer_size*tid*2);
 
         pngenc_adler32 local_sum;
         adler_init(&local_sum);

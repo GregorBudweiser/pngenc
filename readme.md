@@ -2,7 +2,7 @@
 
 This is **pngenc**: A small and *fast* png encoder written in C. 
 
-It is optimized for 64bit multicore machines such as x86_64 and depends only on libc.
+It is optimized for 64bit multicore machines such as x86_64 and depends on libc and libgomp.
 
 ### Status
 
@@ -20,7 +20,7 @@ Runtimes for a FullHD image (1920x1080, 24bit) encoded on an **Intel Core i7 860
 
 Runtimes for a FullHD image (1920x1080, 24bit) encoded on an **AMD Ryzen 7 3700X**, 8C/16T (save to /dev/null):
 * Uncompressed: ~1.7ms (libpng: ~6.3ms)
-* Compressed: ~3.2ms (libpng: ~70ms)
+* Compressed: ~2.7ms (libpng: ~70ms)
 
 ### How to Build
 

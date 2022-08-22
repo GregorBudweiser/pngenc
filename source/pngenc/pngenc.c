@@ -8,17 +8,22 @@
 #include <stdio.h>
 #include <omp.h>
 
-pngenc_encoder pngenc_create_encoder(void) {
+pngenc_encoder pngenc_create_encoder_default(void) {
+    return pngenc_create_encoder(-1, 1024*1024);
+}
+
+pngenc_encoder pngenc_create_encoder(int32_t num_threads, uint32_t chunk_size) {
     pngenc_encoder encoder =
             (pngenc_encoder)malloc(sizeof(struct _pngenc_encoder));
-    encoder->num_threads = omp_get_max_threads();
-    encoder->buffer_size = 1024*1024; // src=1MB; dst=2MB
-    encoder->tmp_buffers = malloc(2ULL * encoder->buffer_size
-                                  * (uint32_t)encoder->num_threads);
-    encoder->dst_buffers = malloc(2ULL * encoder->buffer_size
-                                  * (uint32_t)encoder->num_threads);
+    encoder->num_threads = num_threads > 0
+            ? num_threads
+            : omp_get_max_threads();
+    encoder->buffer_size = chunk_size;
+    encoder->tmp_buffers = malloc(chunk_size * encoder->num_threads);
+    encoder->dst_buffers = malloc(2ULL * chunk_size * encoder->num_threads);
     return encoder;
 }
+
 
 int pngenc_write(pngenc_encoder encoder,
                  const pngenc_image_desc * descriptor,
@@ -51,7 +56,7 @@ void pngenc_destroy_encoder(pngenc_encoder encoder) {
 int pngenc_write_file(const pngenc_image_desc * descriptor,
                       const char * filename) {
 
-    pngenc_encoder encoder = pngenc_create_encoder();
+    pngenc_encoder encoder = pngenc_create_encoder_default();
     RETURN_ON_ERROR(pngenc_write(encoder, descriptor, filename));
     pngenc_destroy_encoder(encoder);
 
