@@ -8,10 +8,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <zlib.h>
 #include "../../tests/common.h"
 
-void write(const char * filename, int width, int height, uint8_t * data,
-           int level, int strategy, int filter) {
+void write_png(const char * filename, int width, int height, uint8_t * data,
+               int level, int strategy, int filter) {
 
     uint8_t ** row_pointers = (uint8_t**)malloc(sizeof(uint8_t*)*height);
     for(int y = 0; y < height; y++) {
@@ -74,24 +75,24 @@ int main()
     fread(buf, C, W*H, file);
     fclose(file);
 
-    for(int compressed = 0; compressed < 2; compressed++)
+    for(int mode = 0; mode < 4; mode++)
     {
-        printf("Write to disk (compressed = %d):\n", compressed);
-        for(int i = 0; i < 10; i++)
+        int modes[4] = { Z_DEFAULT_STRATEGY, Z_HUFFMAN_ONLY, Z_RLE, Z_DEFAULT_STRATEGY };
+        char* mode_str[4] = { "uncompressed", "huff_only", "rle", "full" };
+        char* format[4] = { "libpng_u_%03d.png" , "libpng_huff_%03d.png", "libpng_rle_%03d.png", "libpng_full_%03d.png"};
+        int levels[4] = { 0, 2, 2, 3 };
+        char name[1000];
+        printf("Write to disk (mode = %s):\n", mode_str[mode]);
+        for(int i = 0; i < 1; i++)
         {
-            char name[1000];
             TIMING_START;
-            sprintf (name, "out%03d.png", i);
-            if (compressed) {
-                write(name, W, H, buf, 2, 2, PNG_FILTER_SUB);
-            } else {
-                write(name, W, H, buf, 0, 0, PNG_FILTER_NONE);
-            }
+            sprintf (name, format[mode], i);
+            write_png(name, W, H, buf, levels[mode], modes[mode], PNG_FILTER_SUB);
             TIMING_END;
         }
 
-        printf("Write to /dev/null (compressed = %d):\n", compressed);
-        for(int i = 0; i < 10; i++)
+        printf("Write to /dev/null (mode = %s):\n", mode_str[mode]);
+        for(int i = 0; i < 5; i++)
         {
             TIMING_START;
 #if defined(WIN32) || defined(__WIN32)
@@ -99,11 +100,7 @@ int main()
 #else
             const char * name = "/dev/null";
 #endif
-            if (compressed) {
-                write(name, W, H, buf, 2, 2, PNG_FILTER_SUB);
-            } else {
-                write(name, W, H, buf, 0, 0, PNG_FILTER_NONE);
-            }
+            write_png(name, W, H, buf, levels[mode], modes[mode], PNG_FILTER_SUB);
             TIMING_END;
         }
     }

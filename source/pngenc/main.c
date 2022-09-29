@@ -28,7 +28,7 @@ int main() {
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_uncompressed.png"));
 
     // save compressed
-    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
+    desc.strategy = PNGENC_HUFF_ONLY;
     RETURN_ON_ERROR(pngenc_write_file(&desc, "img_compressed.png"));
 
 

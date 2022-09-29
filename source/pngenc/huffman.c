@@ -155,6 +155,64 @@ void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
 }
 
 /**
+ * Note: By definition of RLE distance is only ever 1.
+ */
+void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * src,
+                                    uint32_t num_bytes) {
+    const uint32_t MAX_LEN = 257;
+    uint32_t i = 0;
+    while(i < num_bytes) {
+        const uint8_t byte = src[i];
+        histogram[byte]++;
+        i++;
+
+        uint32_t length = 0;
+        while(i < num_bytes && src[i] == byte && length < MAX_LEN) {
+            length++;
+            i++;
+        }
+
+        if(length) {
+            if (length < 3) {
+                histogram[byte] += length;
+            } else {
+                // length code
+                length -= 3;
+                int32_t num_extra_bits;
+        #if defined(_MSC_VER)
+                extra_bits = __lzcnt(length | 1);
+        #else
+                num_extra_bits = 31 - __builtin_clz(length | 1);
+        #endif
+                num_extra_bits = max_i32(num_extra_bits-2, 0);
+                uint32_t length_symbol = 257 + (num_extra_bits << 2) + (length >> num_extra_bits);
+                histogram[length_symbol]++;
+            }
+        }
+    }
+}
+
+/**
+ * Faster alternative that improves speed by sacrificing compression (~3%)
+ */
+void huffman_encoder_add_rle_approx(uint32_t *histogram, const uint8_t * src,
+                                    uint32_t num_bytes) {
+    // Only count bytes that differ from prev.
+    // This is an approximation of the actual/optimal histogram
+    uint8_t prev_byte = src[0];
+    for (uint32_t i = 1; i < num_bytes; i++) {
+        const uint8_t byte = src[i];
+        histogram[byte] += (byte != prev_byte);
+        prev_byte = byte;
+    }
+
+    // Approximately every length was taken; good enough on average
+    for(uint32_t i = 257; i < 286; i++) {
+        histogram[i] = 10;
+    }
+}
+
+/**
  * @param power: Higher values give better codes but need more iterations
  */
 int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
@@ -328,7 +386,7 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     }
 
     // Generate final codes
-    for (i = 0;  i <= HUFF_MAX_SIZE; i++) {
+    for (i = 0;  i < HUFF_MAX_SIZE; i++) {
         uint8_t len = encoder->code_lengths[i];
         if (len > 0) {
             encoder->symbols[i] = (uint16_t)next_code[len-1];
@@ -375,9 +433,9 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
     for(; i < fastEnd; ) {
         // Add symbols until we have 32bits to write out
         while(bit_offset < 32) {
-            window |= (uint64_t)encoder->symbols[src[i]] << bit_offset;
+            window |= ((uint64_t)encoder->symbols[src[i]]) << bit_offset;
             bit_offset += encoder->code_lengths[src[i]];
-            window |= (uint64_t)encoder->symbols[src[i+1]] << bit_offset;
+            window |= ((uint64_t)encoder->symbols[src[i+1]]) << bit_offset;
             bit_offset += encoder->code_lengths[src[i+1]];
             i += 2;
         }
@@ -424,6 +482,159 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
+
+void huffman_encoder_encode_rle_simple(const huffman_encoder * encoder,
+                                       const huffman_encoder * dist_encoder,
+                                       const uint8_t * src, uint32_t num_bytes,
+                                       uint8_t * dst, uint64_t * bit_offset) {
+    const uint32_t MAX_LEN = 257;
+    uint32_t i = 0;
+    while(i < num_bytes) {
+        const uint8_t byte = src[i];
+        push_bits(encoder->symbols[byte], encoder->code_lengths[byte], dst, bit_offset);
+        i++;
+
+        uint32_t length = 0;
+        while(i < num_bytes && src[i] == byte && length < MAX_LEN) {
+            length++;
+            i++;
+        }
+
+        if(length) {
+            if (length < 3) {
+                for(int j = 0; j < length; j++) {
+                    push_bits(encoder->symbols[byte], encoder->code_lengths[byte],
+                              dst, bit_offset);
+                }
+            } else {
+                // length code
+                length -= 3;
+                int32_t num_extra_bits;
+        #if defined(_MSC_VER)
+                extra_bits = __lzcnt(length | 1);
+        #else
+                num_extra_bits = 31 - __builtin_clz(length | 1);
+        #endif
+                num_extra_bits = max_i32(num_extra_bits-2, 0);
+                uint32_t length_symbol = 257 + (num_extra_bits << 2) + (length >> num_extra_bits);
+                push_bits(encoder->symbols[length_symbol], encoder->code_lengths[length_symbol],
+                          dst, bit_offset);
+
+                // length extra bits
+                uint32_t mask = (0x1 << num_extra_bits) - 1;
+                uint32_t extra_bits = length & mask;
+                push_bits(extra_bits, num_extra_bits, dst, bit_offset);
+
+                // backward distance = 1 (definition of RLE); => dist symbol 0
+                push_bits(dist_encoder->symbols[0], dist_encoder->code_lengths[0],
+                          dst, bit_offset);
+            }
+        }
+    }
+}
+
+/**
+ * Length code + extra bits + backward dist zero bit
+ */
+struct length_extra {
+    uint32_t bits;
+    uint8_t nbits;
+};
+
+void huffman_encoder_encode_rle(const huffman_encoder * encoder,
+                                const huffman_encoder * dist_encoder,
+                                const uint8_t * src, uint32_t num_bytes,
+                                uint8_t * dst, uint64_t * bit_offset) {
+    // Zero next 4 bytes to avoid masking step in push_bits_a()
+    uint64_t tmp = *bit_offset;
+    push_bits(0, 32, dst, &tmp);
+
+    // build combined length + extra bit symbols in advance
+    const uint32_t MAX_LEN = 257;
+    struct length_extra tbl[258]; // [MAX_LEN]
+    for(uint32_t length = 3; length <= MAX_LEN; length++) {
+        // length code
+        uint32_t l = length - 3;
+        int32_t num_extra_bits;
+#if defined(_MSC_VER)
+        extra_bits = __lzcnt(l | 1);
+#else
+        num_extra_bits = 31 - __builtin_clz(l | 1);
+#endif
+        num_extra_bits = max_i32(num_extra_bits-2, 0);
+        uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> (uint16_t)num_extra_bits);
+
+        // length extra bits
+        uint32_t mask = (0x1 << num_extra_bits) - 1;
+        uint32_t extra_bits = l & mask;
+
+        uint32_t bits = encoder->symbols[length_symbol];
+        uint8_t n_bits = encoder->code_lengths[length_symbol];
+
+        bits |= extra_bits << n_bits;
+        n_bits += num_extra_bits+1; // add distance zero-bit too
+
+        tbl[length].bits = bits;
+        tbl[length].nbits = n_bits;
+    }
+
+    uint64_t offset = *bit_offset;
+
+    uint32_t i = 0;
+    while(i < num_bytes) {
+        const uint8_t byte = src[i];
+        uint64_t window = encoder->symbols[byte];
+        uint32_t n_bits = encoder->code_lengths[byte];
+        i++;
+
+        uint32_t length = 0;
+        while(i < num_bytes && src[i] == byte && length < MAX_LEN) {
+            length++;
+            i++;
+        }
+
+        if(length) {
+            if (length < 3) {
+                for(int j = 0; j < length; j++) {
+                    window |= ((uint64_t)encoder->symbols[byte]) << n_bits;
+                    n_bits += encoder->code_lengths[byte];
+                }
+            } else {
+                // length code
+                /*uint32_t l = length - 3;
+                int32_t num_extra_bits;
+        #if defined(_MSC_VER)
+                extra_bits = __lzcnt(l | 1);
+        #else
+                num_extra_bits = 31 - __builtin_clz(l | 1);
+        #endif
+                num_extra_bits = max_i32(num_extra_bits-2, 0);
+                uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> (uint16_t)num_extra_bits);
+
+                // length extra bits
+                uint32_t mask = (0x1 << num_extra_bits) - 1;
+                uint32_t extra_bits = l & mask;
+
+                window |= ((uint64_t)(encoder->symbols[length_symbol])) << n_bits;
+                n_bits += encoder->code_lengths[length_symbol];
+
+                window |= ((uint64_t)(extra_bits)) << n_bits;
+                n_bits += num_extra_bits+1;*/
+
+                window |= ((uint64_t)(tbl[length].bits)) << n_bits;
+                n_bits += tbl[length].nbits;
+            }
+        }
+
+#if defined(__x86_64__) || defined(_WIN64)
+        offset = push_bits_u(window, n_bits, dst, offset);
+#else
+        offset = push_bits_a(window, n_bits, dst, offset);
+#endif
+    }
+    *bit_offset = offset;
+}
+
 int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;
     for(int i = 0; i < HUFF_MAX_SIZE; i++) {
@@ -455,7 +666,7 @@ void huffman_encoder_print(const huffman_encoder * encoder, const char * name) {
 /**
  * Push bits into a buffer at specified offset in bits.
  * Pre-condition: Requires the current byte to be zeroed after bit_offset.
- * Post-condition: Current byte is cleared after bit_offset.
+ * Post-condition: Current byte is zeroed after bit_offset.
  *
  * Current byte:
  * <---Data--------><---Zeroed----->
@@ -465,25 +676,64 @@ void huffman_encoder_print(const huffman_encoder * encoder, const char * name) {
  * bit_offet % 8 ----^
  *
  */
-void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
+void push_bits(uint64_t bits, uint8_t nbits, uint8_t * dst,
                uint64_t * bit_offset) {
     assert(nbits <= 64);
 
     // fill current byte
     uint64_t offset = *bit_offset;
-    data += offset >> 3;
+    dst += offset >> 3;
     uint8_t shift = (uint8_t)(offset) & 0x7;
     *bit_offset = offset + nbits;
     int8_t bits_remaining = (int8_t)nbits;
-    *data = (*data) | (uint8_t)(bits << shift);
+    *dst = (*dst) | (uint8_t)(bits << shift);
     bits >>= 8 - shift;
     bits_remaining -= 8 - shift;
 
     // write remaining bytes (or clear next byte in case of -1)
     while(bits_remaining > -1) {
-        data++;
-        *data = (uint8_t)bits;
+        dst++;
+        *dst = (uint8_t)bits;
         bits >>= 8;
         bits_remaining -= 8;
     }
+}
+
+/**
+ * @brief Push bits to stream with 32-bit writes.
+ *
+ * Handles up to 64 bytes.
+ *
+ * Pre- and post-condition: Next 4 bytes are zeroed.
+ */
+uint64_t push_bits_a(uint64_t bits, uint8_t nbits, uint8_t * dst,
+                     uint64_t bit_offset) {
+    assert(nbits <= 64);
+    dst += bit_offset >> 3;
+    uint32_t * dst32 = (uint32_t*)((size_t)dst & ~((size_t)0x3));
+    uint8_t shift = 8*((size_t)dst - (size_t)dst32) + (bit_offset & 0x7);
+    //uint64_t mask = ((uint64_t)1 << shift)-1;
+    uint64_t window = (uint64_t)(dst32[0]/* & mask*/) | (bits << shift);
+    dst32[0] = window;
+    dst32[1] = window >> 32;
+    dst32[2] = (bits >> (64-shift))*(shift > 0);
+    return bit_offset + nbits;
+}
+
+/**
+ * @brief Push bits in a single unaligned 64bit write.
+ *
+ * Handles up to 56 bits.
+ */
+uint64_t push_bits_u(uint64_t bits, uint8_t nbits, uint8_t * dst,
+                     uint64_t bit_offset) {
+    // TODO: handle arch without unaligned write
+    assert(nbits < 57);
+    dst += bit_offset >> 3;
+    uint8_t shift = bit_offset & 0x7;
+    uint64_t window = (bits << shift) | ((uint64_t)(*dst));
+
+    uint64_t * dst64u = (uint64_t*)dst;
+    *dst64u = window;
+    return bit_offset + nbits;
 }

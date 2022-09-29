@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <malloc.h>
 #include "../source/pngenc/utils.h"

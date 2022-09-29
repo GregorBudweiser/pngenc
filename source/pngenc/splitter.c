@@ -152,9 +152,18 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
 
             // compress: zlib-deflate-block, zlib-uncompressed-0-block (zflush)
             uint8_t last_block = yEnd >= desc->height ? 1 : 0;
-            result = desc->strategy == PNGENC_NO_COMPRESSION
-                    ? write_deflate_block_uncompressed(dst, tmp, num_bytes, last_block)
-                    : write_deflate_block_compressed(dst, tmp, num_bytes, last_block);
+            switch(desc->strategy) {
+                default:
+                case PNGENC_NO_COMPRESSION:
+                    result = write_deflate_block_uncompressed(dst, tmp, num_bytes, last_block);
+                    break;
+                case PNGENC_HUFF_ONLY:
+                    result = write_deflate_block_huff_only(dst, tmp, num_bytes, last_block);
+                    break;
+                case PNGENC_RLE:
+                    result = write_deflate_block_rle(dst, tmp, num_bytes, last_block);
+                    break;
+            }
 
             if(result < 0) {
                 err = 1;

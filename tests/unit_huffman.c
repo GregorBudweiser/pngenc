@@ -87,28 +87,45 @@ int test_huffman_encode() {
     for(i = 0; i < N; i++) {
         src[i] = (uint8_t)rand();
     }
-    huffman_encoder_add(encoder.histogram, src, N);
+    /*huffman_encoder_add(encoder.histogram, src, N);
     encoder.histogram[256] = 1;
     RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95));
+    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));*/
+
+    // Set lengths for fixed tree (as per RFC1951)
+    for(uint32_t i = 0; i <= 143; i++) {
+        encoder.code_lengths[i] = 8;
+    }
+
+    for(uint32_t i = 144; i <= 255; i++) {
+        encoder.code_lengths[i] = 9;
+    }
+
+    for(uint32_t i = 256; i <= 279; i++) {
+        encoder.code_lengths[i] = 7;
+    }
+
+    for(uint32_t i = 280; i <= 287; i++) {
+        encoder.code_lengths[i] = 8;
+    }
+
     RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));
 
     // Compute reference using simple shifting algorithm
     uint64_t ref_offset;
-    //memset(ref, 0, 2*N);
-    ref[0] = 0; // only needs first byte cleared
+    memset(ref, 0, 2*N);
     ref_offset = OFFSET;
     RETURN_ON_ERROR(huffman_encoder_encode_simple(&encoder, src, N, ref, &ref_offset));
 
     // Compare optimized version
     {
         uint64_t offset;
-        memset(dst + (OFFSET/8+1), 0xFF, 2*N - (OFFSET/8+1));
-        dst[0] = 0; // only needs first byte cleared
+        memset(dst, 0, 2*N);
         offset = OFFSET;
         RETURN_ON_ERROR(huffman_encoder_encode64_3(&encoder, src, N, dst, &offset));
 
         ASSERT_TRUE(offset == ref_offset);
-        ASSERT_TRUE(memcmp(ref, dst, offset / 8) == 0);
+        ASSERT_TRUE(memcmp(ref, dst, 2*N) == 0);
     }
     return 0;
 }
@@ -174,6 +191,5 @@ int unit_huffman(int argc, char* argv[])
     RETURN_ON_ERROR(test_huffman_build_tree());
     RETURN_ON_ERROR(test_huffman_encode());
     RETURN_ON_ERROR(test_huffman_encode_multi());
-    // TODO: Handle all the other stuff..
     return 0;
 }

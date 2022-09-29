@@ -31,6 +31,7 @@ create_test(unit_huffman)
 create_test(unit_crc)
 create_test(unit_deflate)
 create_test(unit_pow)
+create_test(unit_push_bits)
 
 # Integration tests
 create_test(integration_save_png)
@@ -41,6 +42,9 @@ create_test(integration_pipeline)
 create_test(perf_huffman)
 create_test(perf_adler)
 create_test(perf_mt)
+
+# Utilities
+create_test(util_huff_tree)
 
 # CTEST stuff
 file(GLOB pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/../source/pngenc/*.c"

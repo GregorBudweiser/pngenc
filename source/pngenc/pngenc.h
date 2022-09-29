@@ -12,22 +12,29 @@
 #endif
 
 #define PNGENC_VERSION_MAJOR 0
-#define PNGENC_VERSION_MINOR 6
+#define PNGENC_VERSION_MINOR 7
 #define PNGENC_VERSION_PATCH 0
 
 /**
- * Compression strategy; influences both png and zlib settings.
+ * Compression strategy; influences both png and zlib/deflate settings.
  */
 typedef enum _pngenc_compression_strategy {
     /**
-     * No compression. Fastest option.
+     * No compression, no filtering. Fastest option.
      */
     PNGENC_NO_COMPRESSION,
 
     /**
-     * Reasonably fast option. Uses huffman coding and horizontal row-filter.
+     * Reasonably fast option with reasonably good compression.
+     * Uses huffman coding (Z_HUFF_ONLY) and horizontal row-filter.
      */
-    PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1
+    PNGENC_HUFF_ONLY,
+
+    /**
+     * Good compression.
+     * Uses run length encoding and horizontal row-filter.
+     */
+    PNGENC_RLE
 } pngenc_compression_strategy;
 
 /**

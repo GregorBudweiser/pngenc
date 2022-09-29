@@ -30,31 +30,31 @@ int main() {
     desc.row_stride = W*C;
     desc.bit_depth = 8;
 
-    for(int compressed = 0; compressed < 2; compressed++)
+    pngenc_encoder enc = pngenc_create_encoder_default(); // pngenc_create_encoder(1, 1024*1024); //
+    for(int mode = 0; mode < 3; mode++)
     {
-        desc.strategy = (compressed > 0)
-                ? PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1
-                : PNGENC_NO_COMPRESSION;
+        desc.strategy = mode;
 
-
+        char* mode_str[3] = { "uncompressed", "huff_only", "rle" };
+        char* format[3] = { "u_%03d.png" , "huff_%03d.png", "rle_%03d.png"};
         char name[1000];
-        printf("Write to disk (compressed = %d):\n", compressed);
-        for(int i = 0; i < 10; i++)
+        printf("Write to disk (mode = %s):\n", mode_str[mode]);
+        for(int i = 0; i < 1; i++)
         {
             TIMING_START;
-            sprintf(name, compressed ? "compressed_%03d.png" : "uncompressed_%03d.png", i);
-            RETURN_ON_ERROR(pngenc_write_file(&desc, name));
+            sprintf(name, format[mode], i);
+            RETURN_ON_ERROR(pngenc_write(enc, &desc, mode_str[mode]));
             TIMING_END;
         }
 
-        printf("Write to /dev/null (compressed = %d):\n", compressed);
-        for(int i = 0; i < 10; i++)
+        printf("Write to /dev/null (mode = %s):\n", mode_str[mode]);
+        for(int i = 0; i < 5; i++)
         {
             TIMING_START;
 #if defined(WIN32) || defined(__WIN32)
             RETURN_ON_ERROR(pngenc_write_file(&desc, "NUL"));
 #else
-            RETURN_ON_ERROR(pngenc_write_file(&desc, "/dev/null"));
+            RETURN_ON_ERROR(pngenc_write(enc, &desc, "/dev/null"));
 #endif
             TIMING_END;
         }

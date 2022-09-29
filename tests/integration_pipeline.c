@@ -35,7 +35,7 @@ int integration_pipeline(int argc, char* argv[]) {
     desc.num_channels = C;
     desc.row_stride = W * C;
     desc.bit_depth = 8;
-    desc.strategy = PNGENC_HUFFMAN_ONLY_WITH_PNG_ROW_FILTER1;
+    desc.strategy = PNGENC_HUFF_ONLY;
 
     uint8_t * copies[8];
     copies[0] = buf;
