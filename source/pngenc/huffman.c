@@ -159,7 +159,7 @@ void huffman_encoder_add_simple(uint32_t * histogram, const uint8_t * data,
  */
 void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * src,
                                     uint32_t num_bytes) {
-    const uint32_t MAX_LEN = 257;
+    const uint32_t MAX_LEN = 258;
     uint32_t i = 0;
     while(i < num_bytes) {
         const uint8_t byte = src[i];
@@ -175,12 +175,14 @@ void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * src,
         if(length) {
             if (length < 3) {
                 histogram[byte] += length;
+            } else if (length == 258) {
+                histogram[285]++;
             } else {
                 // length code
                 length -= 3;
                 int32_t num_extra_bits;
         #if defined(_MSC_VER)
-                extra_bits = __lzcnt(length | 1);
+                num_extra_bits = __lzcnt(length | 1);
         #else
                 num_extra_bits = 31 - __builtin_clz(length | 1);
         #endif
@@ -190,6 +192,48 @@ void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * src,
             }
         }
     }
+}
+
+void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * src,
+                             uint32_t num_bytes) {
+    const uint32_t MAX_LEN = 258;
+    uint32_t lengths[259];
+    memset(lengths, 0, sizeof(lengths));
+    uint32_t i = 0;
+    while(i < num_bytes) {
+        // collect literal
+        const uint8_t byte = src[i];
+        histogram[byte]++;
+        i++;
+
+        // compute length
+        uint32_t length = 0;
+        while(i < num_bytes && src[i] == byte && length < MAX_LEN) {
+            length++;
+            i++;
+        }
+
+        if (length < 3) {
+            histogram[byte] += length;
+        } else {
+            lengths[length]++;
+        }
+    }
+
+    for(uint32_t length = 3; length < MAX_LEN; length++) {
+        // length code
+        uint32_t l = length - 3;
+        int32_t num_extra_bits;
+#if defined(_MSC_VER)
+        num_extra_bits = __lzcnt(l | 1);
+#else
+        num_extra_bits = 31 - __builtin_clz(l | 1);
+#endif
+        num_extra_bits = max_i32(num_extra_bits-2, 0);
+        uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> num_extra_bits);
+        histogram[length_symbol] += lengths[length];
+    }
+    histogram[285] = lengths[MAX_LEN];
 }
 
 /**
@@ -511,7 +555,7 @@ void huffman_encoder_encode_rle_simple(const huffman_encoder * encoder,
                 length -= 3;
                 int32_t num_extra_bits;
         #if defined(_MSC_VER)
-                extra_bits = __lzcnt(length | 1);
+                num_extra_bits = __lzcnt(length | 1);
         #else
                 num_extra_bits = 31 - __builtin_clz(length | 1);
         #endif
@@ -550,14 +594,14 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
     push_bits(0, 32, dst, &tmp);
 
     // build combined length + extra bit symbols in advance
-    const uint32_t MAX_LEN = 257;
-    struct length_extra tbl[258]; // [MAX_LEN]
-    for(uint32_t length = 3; length <= MAX_LEN; length++) {
+    const uint32_t MAX_LEN = 258;
+    struct length_extra tbl[259]; // [MAX_LEN+1]
+    for(uint32_t length = 3; length < MAX_LEN; length++) {
         // length code
         uint32_t l = length - 3;
         int32_t num_extra_bits;
 #if defined(_MSC_VER)
-        extra_bits = __lzcnt(l | 1);
+        num_extra_bits = __lzcnt(l | 1);
 #else
         num_extra_bits = 31 - __builtin_clz(l | 1);
 #endif
@@ -577,6 +621,8 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
         tbl[length].bits = bits;
         tbl[length].nbits = n_bits;
     }
+    tbl[258].bits = encoder->symbols[285];
+    tbl[258].nbits = encoder->code_lengths[285]+1;
 
     uint64_t offset = *bit_offset;
 
@@ -604,7 +650,7 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
                 /*uint32_t l = length - 3;
                 int32_t num_extra_bits;
         #if defined(_MSC_VER)
-                extra_bits = __lzcnt(l | 1);
+                num_extra_bits = __lzcnt(l | 1);
         #else
                 num_extra_bits = 31 - __builtin_clz(l | 1);
         #endif
@@ -727,7 +773,6 @@ uint64_t push_bits_a(uint64_t bits, uint8_t nbits, uint8_t * dst,
  */
 uint64_t push_bits_u(uint64_t bits, uint8_t nbits, uint8_t * dst,
                      uint64_t bit_offset) {
-    // TODO: handle arch without unaligned write
     assert(nbits < 57);
     dst += bit_offset >> 3;
     uint8_t shift = bit_offset & 0x7;

@@ -180,8 +180,8 @@ int32_t write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
 }
 
 int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
-                                huffman_encoder * encoder,
-                                huffman_encoder * dist_encoder) {
+                         huffman_encoder * encoder,
+                         huffman_encoder * dist_encoder) {
     // clear dst memory for header and first four bytes of stream
     for (int i = 0; i < 287+4; i++) {
         dst[i] = 0;

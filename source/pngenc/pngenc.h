@@ -159,23 +159,6 @@ int pngenc_write_file(const pngenc_image_desc * descriptor,
                       const char * filename);
 
 /**
- * Encode image and use callback receiving processed data.
- *
- * @param descriptor: Image descriptor.
- *
- * @param write_data_callback: Called whenever more chunks of data are
- *        available.
- *
- * @param user_data: Pointer to custom data that is provided in callback.
- *
- * @returns: Integer representing a pngenc_result.
- */
-PNGENC_API
-int pngenc_write_func(const pngenc_image_desc * descriptor,
-                      pngenc_user_write_callback write_data_callback,
-                      void * user_data);
-
-/**
  * Create default encoder.
  *
  * @returns: Encoder handle.
