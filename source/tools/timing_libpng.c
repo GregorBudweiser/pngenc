@@ -77,17 +77,18 @@ int main()
 
     for(int mode = 0; mode < 4; mode++)
     {
-        int modes[4] = { Z_DEFAULT_STRATEGY, Z_HUFFMAN_ONLY, Z_RLE, Z_DEFAULT_STRATEGY };
+        int modes[4] = { Z_FIXED, Z_HUFFMAN_ONLY, Z_RLE, Z_DEFAULT_STRATEGY };
         char* mode_str[4] = { "uncompressed", "huff_only", "rle", "full" };
         char* format[4] = { "libpng_u_%03d.png" , "libpng_huff_%03d.png", "libpng_rle_%03d.png", "libpng_full_%03d.png"};
         int levels[4] = { 0, 2, 2, 3 };
+        int filters[4] = { PNG_FILTER_NONE, PNG_FILTER_SUB, PNG_FILTER_SUB, PNG_ALL_FILTERS };
         char name[1000];
         printf("Write to disk (mode = %s):\n", mode_str[mode]);
         for(int i = 0; i < 1; i++)
         {
             TIMING_START;
             sprintf (name, format[mode], i);
-            write_png(name, W, H, buf, levels[mode], modes[mode], PNG_FILTER_SUB);
+            write_png(name, W, H, buf, levels[mode], modes[mode], filters[mode]);
             TIMING_END;
         }
 

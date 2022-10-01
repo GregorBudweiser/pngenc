@@ -30,20 +30,20 @@ int main() {
     desc.row_stride = W*C;
     desc.bit_depth = 8;
 
-    pngenc_encoder enc = pngenc_create_encoder_default(); // pngenc_create_encoder(1, 1024*1024); //
+    pngenc_encoder enc = pngenc_create_encoder(1, 1024*1024); // pngenc_create_encoder_default(); //
     for(int mode = 0; mode < 3; mode++)
     {
         desc.strategy = mode;
 
         char* mode_str[3] = { "uncompressed", "huff_only", "rle" };
-        char* format[3] = { "u_%03d.png" , "huff_%03d.png", "rle_%03d.png"};
+        char* format[3] = { "u_%03d.png", "huff_%03d.png", "rle_%03d.png"};
         char name[1000];
         printf("Write to disk (mode = %s):\n", mode_str[mode]);
         for(int i = 0; i < 1; i++)
         {
             TIMING_START;
             sprintf(name, format[mode], i);
-            RETURN_ON_ERROR(pngenc_write(enc, &desc, mode_str[mode]));
+            RETURN_ON_ERROR(pngenc_write(enc, &desc, name));
             TIMING_END;
         }
 

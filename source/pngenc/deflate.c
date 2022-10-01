@@ -6,9 +6,9 @@
 #include <assert.h>
 
 int32_t write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
-                               huffman_encoder * encoder) {
+                               huffman_encoder * encoder, int last_block) {
     // write dynamic block header
-    push_bits(0, 1, dst, bit_offset); // not last block
+    push_bits(last_block, 1, dst, bit_offset); // last block?
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
@@ -114,37 +114,27 @@ int64_t write_deflate_block_huff_only(uint8_t * dst, const uint8_t * src,
     huffman_encoder_add(encoder.histogram, src, num_bytes);
     encoder.histogram[256] = 1; // terminator
 
-    RETURN_ON_ERROR(write_header_huff_only(dst, &bit_offset, &encoder));
-
-    /*
-     *        The actual compressed data of the block,
-     *           encoded using the literal/length and distance Huffman
-     *           codes
-     *
-     *        The literal/length symbol 256 (end of data),
-     *           encoded using the literal/length Huffman code
-     *
-     *  The code length repeat codes can cross from HLIT + 257 to the
-     *  HDIST + 1 code lengths.  In other words, all code lengths form
-     *  a single sequence of HLIT + HDIST + 258 values.
-     */
+    RETURN_ON_ERROR(write_header_huff_only(dst, &bit_offset, &encoder,
+                                           last_block));
     RETURN_ON_ERROR(huffman_encoder_encode(&encoder, src, num_bytes, dst,
                                            &bit_offset));
     // Terminator symbol (i.e. compressed block ends here)
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               dst, &bit_offset);
 
-    // zflush with uncompressed block to achieve byte-alignment
-    push_bits(last_block, 1, dst, &bit_offset); // last block?
-    push_bits(0, 2, dst, &bit_offset);          // uncompressed block
-    uint64_t encoded_bytes = (bit_offset + 7) / 8;
-    dst += encoded_bytes;
-    *dst++ = 0;
-    *dst++ = 0;
-    *dst++ = 0xFF;
-    *dst++ = 0xFF;
-
-    return (int64_t)encoded_bytes + 4;
+    if (!last_block) {
+        // zflush with uncompressed block to achieve byte-alignment
+        push_bits(0, 3, dst, &bit_offset); // not last, uncompressed block
+        uint64_t encoded_bytes = (bit_offset + 7) / 8;
+        dst += encoded_bytes;
+        *dst++ = 0;
+        *dst++ = 0;
+        *dst++ = 0xFF;
+        *dst++ = 0xFF;
+        return (int64_t)encoded_bytes + 4;
+    } else {
+        return (bit_offset + 7) / 8;
+    }
 }
 
 int32_t write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
@@ -181,14 +171,15 @@ int32_t write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
 
 int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
                          huffman_encoder * encoder,
-                         huffman_encoder * dist_encoder) {
+                         huffman_encoder * dist_encoder,
+                         int last_block) {
     // clear dst memory for header and first four bytes of stream
     for (int i = 0; i < 287+4; i++) {
         dst[i] = 0;
     }
 
     // write dynamic block header
-    push_bits(0, 1, dst, bit_offset); // not last block
+    push_bits(last_block, 1, dst, bit_offset); // last block?
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
@@ -302,24 +293,26 @@ int64_t write_deflate_block_rle(uint8_t * dst, const uint8_t * src,
     huffman_encoder_add_rle_approx(encoder.histogram, src, num_bytes);
 
     uint64_t bit_offset = 0;
-    RETURN_ON_ERROR(write_header_rle(dst, &bit_offset, &encoder, &dist_encoder));
+    RETURN_ON_ERROR(write_header_rle(dst, &bit_offset, &encoder, &dist_encoder, last_block));
     huffman_encoder_encode_rle(&encoder, &dist_encoder, src, num_bytes, dst, &bit_offset);
 
     // Terminator symbol (i.e. compressed block ends here)
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               dst, &bit_offset);
 
-    // zflush with uncompressed block to achieve byte-alignment
-    push_bits(last_block, 1, dst, &bit_offset); // last block?
-    push_bits(0, 2, dst, &bit_offset);          // uncompressed block
-    uint64_t encoded_bytes = (bit_offset + 7) / 8;
-    dst += encoded_bytes;
-    *dst++ = 0;
-    *dst++ = 0;
-    *dst++ = 0xFF;
-    *dst++ = 0xFF;
-
-    return (int64_t)encoded_bytes + 4;
+    if (!last_block) {
+        // zflush with uncompressed block to achieve byte-alignment
+        push_bits(0, 3, dst, &bit_offset); // not last, uncompressed block
+        uint64_t encoded_bytes = (bit_offset + 7) / 8;
+        dst += encoded_bytes;
+        *dst++ = 0;
+        *dst++ = 0;
+        *dst++ = 0xFF;
+        *dst++ = 0xFF;
+        return (int64_t)encoded_bytes+4;
+    } else {
+        return (bit_offset + 7) / 8;
+    }
 }
 
 int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,

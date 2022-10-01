@@ -526,7 +526,9 @@ int huffman_encoder_encode_simple(const huffman_encoder * encoder,
     return PNGENC_SUCCESS;
 }
 
-
+/**
+ * Simple reference implementation.
+ */
 void huffman_encoder_encode_rle_simple(const huffman_encoder * encoder,
                                        const huffman_encoder * dist_encoder,
                                        const uint8_t * src, uint32_t num_bytes,
