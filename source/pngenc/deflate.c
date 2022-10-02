@@ -5,15 +5,15 @@
 #include <stdio.h>
 #include <assert.h>
 
-int32_t write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
-                               huffman_encoder * encoder, int last_block) {
+void write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
+                            huffman_encoder * encoder, int last_block) {
     // write dynamic block header
     push_bits(last_block, 1, dst, bit_offset); // last block?
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15, POW_95));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+    huffman_encoder_build_tree_limited(encoder, 15, POW_95);
+    huffman_encoder_build_codes_from_lengths(encoder);
 
     huffman_encoder code_length_encoder;
     huffman_encoder_init(&code_length_encoder);
@@ -23,8 +23,8 @@ int32_t write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
     code_length_encoder.histogram[0]++;
 
     // code length codes limited to 7 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
+    huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80);
+    huffman_encoder_build_codes_from_lengths(&code_length_encoder);
 
     /*
      * From the RFC:
@@ -94,8 +94,6 @@ int32_t write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
      */
     push_bits(code_length_encoder.symbols[0],
               code_length_encoder.code_lengths[0], dst, bit_offset);
-
-    return 0;
 }
 
 int64_t write_deflate_block_huff_only(uint8_t * dst, const uint8_t * src,
@@ -114,10 +112,8 @@ int64_t write_deflate_block_huff_only(uint8_t * dst, const uint8_t * src,
     huffman_encoder_add(encoder.histogram, src, num_bytes);
     encoder.histogram[256] = 1; // terminator
 
-    RETURN_ON_ERROR(write_header_huff_only(dst, &bit_offset, &encoder,
-                                           last_block));
-    RETURN_ON_ERROR(huffman_encoder_encode(&encoder, src, num_bytes, dst,
-                                           &bit_offset));
+    write_header_huff_only(dst, &bit_offset, &encoder, last_block);
+    huffman_encoder_encode(&encoder, src, num_bytes, dst, &bit_offset);
     // Terminator symbol (i.e. compressed block ends here)
     push_bits(encoder.symbols[256], encoder.code_lengths[256],
               dst, &bit_offset);
@@ -137,9 +133,9 @@ int64_t write_deflate_block_huff_only(uint8_t * dst, const uint8_t * src,
     }
 }
 
-int32_t write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
-                           huffman_encoder * encoder,
-                           huffman_encoder * dist_encoder) {
+void write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
+                        huffman_encoder * encoder,
+                        huffman_encoder * dist_encoder) {
     // write dynamic block header
     push_bits(0, 1, dst, bit_offset); // not last block
     push_bits(1, 2, dst, bit_offset); // compressed block: static huff.
@@ -158,21 +154,20 @@ int32_t write_header_fixed(uint8_t * dst, uint64_t * bit_offset,
     for(uint32_t i = 280; i <= 287; i++) {
         encoder->code_lengths[i] = 8;
     }
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+    huffman_encoder_build_codes_from_lengths(encoder);
 
     // distances
     huffman_encoder_init(dist_encoder);
     for(uint32_t i = 0; i <= 29; i++) {
         dist_encoder->code_lengths[i] = 5;
     }
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(dist_encoder));
-    return 0;
+    huffman_encoder_build_codes_from_lengths(dist_encoder);
 }
 
-int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
-                         huffman_encoder * encoder,
-                         huffman_encoder * dist_encoder,
-                         int last_block) {
+void write_header_rle(uint8_t * dst, uint64_t * bit_offset,
+                      huffman_encoder * encoder,
+                      huffman_encoder * dist_encoder,
+                      int last_block) {
     // clear dst memory for header and first four bytes of stream
     for (int i = 0; i < 287+4; i++) {
         dst[i] = 0;
@@ -183,11 +178,11 @@ int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(encoder, 15, POW_95));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(encoder));
+    huffman_encoder_build_tree_limited(encoder, 15, POW_95);
+    huffman_encoder_build_codes_from_lengths(encoder);
 
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(dist_encoder, 15, POW_95));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(dist_encoder));
+    huffman_encoder_build_tree_limited(dist_encoder, 15, POW_95);
+    huffman_encoder_build_codes_from_lengths(dist_encoder);
 
     /*
      * From the RFC:
@@ -214,8 +209,8 @@ int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
     code_length_encoder.histogram[dist_encoder->code_lengths[1]]++;
 
     // code length codes limited to 7 bits
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&code_length_encoder));
+    huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80);
+    huffman_encoder_build_codes_from_lengths(&code_length_encoder);
 
     push_bits(HLIT,  5, dst, bit_offset);
     push_bits(HDIST, 5, dst, bit_offset);
@@ -271,7 +266,6 @@ int32_t write_header_rle(uint8_t * dst, uint64_t * bit_offset,
                   code_length_encoder.code_lengths[dist_encoder->code_lengths[i]],
                   dst, bit_offset);
     }
-    return 0;
 }
 
 int64_t write_deflate_block_rle(uint8_t * dst, const uint8_t * src,
@@ -293,7 +287,7 @@ int64_t write_deflate_block_rle(uint8_t * dst, const uint8_t * src,
     huffman_encoder_add_rle_approx(encoder.histogram, src, num_bytes);
 
     uint64_t bit_offset = 0;
-    RETURN_ON_ERROR(write_header_rle(dst, &bit_offset, &encoder, &dist_encoder, last_block));
+    write_header_rle(dst, &bit_offset, &encoder, &dist_encoder, last_block);
     huffman_encoder_encode_rle(&encoder, &dist_encoder, src, num_bytes, dst, &bit_offset);
 
     // Terminator symbol (i.e. compressed block ends here)

@@ -238,9 +238,11 @@ void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * src,
 
 /**
  * Faster alternative that improves speed by sacrificing compression (~3%)
+ *
+ * Only count the first byte of each repetition; weight each length the same.
  */
-void huffman_encoder_add_rle_approx(uint32_t *histogram, const uint8_t * src,
-                                    uint32_t num_bytes) {
+void huffman_encoder_add_rle_approx_simple(uint32_t *histogram, const uint8_t * src,
+                                           uint32_t num_bytes) {
     // Only count bytes that differ from prev.
     // This is an approximation of the actual/optimal histogram
     uint8_t prev_byte = src[0];
@@ -257,12 +259,73 @@ void huffman_encoder_add_rle_approx(uint32_t *histogram, const uint8_t * src,
 }
 
 /**
+ * Same as @see huffman_encoder_add_rle_approx_simple(). Unrolled inner loop.
+ */
+void huffman_encoder_add_rle_approx(uint32_t * histogram, const uint8_t * symbols,
+                                    uint32_t length) {
+    // padd to 8 bytes
+    while(length > 0 && (((size_t)symbols) & 0x7) != 0) {
+        histogram[*symbols]++;
+        symbols++;
+    }
+
+    uint16_t counters[4][256];
+    memset(counters, 0, 4*256*2);
+    uint64_t l8 = length/8;
+
+    const uint64_t * data = (const uint64_t*)symbols;
+
+    histogram[0]++;
+    uint8_t prev = 0;
+
+    // Each sub-histogram gets updated twice -> 2*0x7FFF = UINT16_MAX
+    for(uint64_t start = 0; start < length; start += 0x7FFF) {
+        uint64_t end = min_u64(l8, start + 0x7FFF);
+        for(uint64_t i = start; i < end; i++) {
+            register uint64_t tmp = data[i];
+            uint8_t new0 = tmp & 0xFF;
+            counters[0][new0] += (new0 != prev);
+            uint8_t new1 = (tmp >>  8) & 0xFF;
+            counters[1][new1] += (new1 != new0);
+            uint8_t new2 = (tmp >> 16) & 0xFF;
+            counters[2][new2] += (new2 != new1);
+            uint8_t new3 = (tmp >> 24) & 0xFF;
+            counters[3][new3] += (new3 != new2);
+            uint8_t new4 = (tmp >> 32) & 0xFF;
+            counters[0][new4] += (new4 != new3);
+            uint8_t new5 = (tmp >> 40) & 0xFF;
+            counters[1][new5] += (new5 != new4);
+            uint8_t new6 = (tmp >> 48) & 0xFF;
+            counters[2][new6] += (new6 != new5);
+            prev = (tmp >> 56);
+            counters[3][prev] += (prev != new6);
+        }
+
+        for(int i = 0; i < 256; i++) {
+            histogram[i] += counters[0][i] + counters[1][i]
+                          + counters[2][i] + counters[3][i];
+        }
+        memset(counters, 0, 4*256*2);
+    }
+
+    // Unpadded trailing bytes..
+    for(uint64_t i = l8*8; i < length; i++) {
+        histogram[symbols[i]]++;
+    }
+
+    // Approximately every length was taken; good enough on average
+    for(uint32_t i = 257; i < 286; i++) {
+        histogram[i] = 10;
+    }
+}
+
+/**
  * @param power: Higher values give better codes but need more iterations
  */
-int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
-                                       uint8_t limit, power_coefficient power) {
+void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,
+                                        power_coefficient power) {
     // TODO: Compute optimal tree (e.g. use optimal algorithm)
-    RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
+    huffman_encoder_build_tree(encoder);
     while(huffman_encoder_get_max_length(encoder) > limit) {
         // nonlinearly reduce weight of nodes to lower max tree depth
         switch(power) {
@@ -278,12 +341,11 @@ int huffman_encoder_build_tree_limited(huffman_encoder * encoder,
             }
             break;
         }
-        RETURN_ON_ERROR(huffman_encoder_build_tree(encoder));
+        huffman_encoder_build_tree(encoder);
     }
-    return PNGENC_SUCCESS;
 }
 
-int huffman_encoder_build_tree(huffman_encoder * encoder) {
+void huffman_encoder_build_tree(huffman_encoder * encoder) {
 
     //const uint64_t N_SYMBOLS = HUFF_MAX_SIZE;
     // msvc cant do this because it lacks c99 support?
@@ -397,15 +459,11 @@ int huffman_encoder_build_tree(huffman_encoder * encoder) {
 
         encoder->code_lengths[symbols[i].symbol] = length;
     }
-
-    return PNGENC_SUCCESS;
 }
 
-int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
+void huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
     // huffman codes are limited to 15bits
-    if(huffman_encoder_get_max_length(encoder) > 15) {
-        return PNGENC_ERROR;
-    }
+    assert(huffman_encoder_get_max_length(encoder) > 15);
 
     // Find number of elements per code length
     const uint8_t MAX_BITS = 16;
@@ -445,26 +503,25 @@ int huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
                | ((uint32_t)bit_reverse_table_256[(symbol & 0xFF00) >> 8]);
         encoder->symbols[i] = (uint16_t)symbol;
     }
-
-    return PNGENC_SUCCESS;
 }
 
-int huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
-                           uint32_t length, uint8_t * dst, uint64_t * offset) {
+void huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
+                            uint32_t length, uint8_t * dst, uint64_t * offset) {
     // Cannot assume dst to be zeroed!
-    return huffman_encoder_encode64_3(encoder, src, length, dst, offset);
+    huffman_encoder_encode64_3(encoder, src, length, dst, offset);
 }
 
 /**
  * This function does not have unaligned memory writes like the other encode
  * functions. Puts less pressure on MMU and scales better when parallelized.
  */
-int huffman_encoder_encode64_3(const huffman_encoder * encoder,
-                               const uint8_t * src, uint32_t length,
-                               uint8_t * dst, uint64_t * offset) {
+void huffman_encoder_encode64_3(const huffman_encoder * encoder,
+                                const uint8_t * src, uint32_t length,
+                                uint8_t * dst, uint64_t * offset) {
     const uint32_t padding = 32; // 64 bit / min Symbol size
     if(length <= padding) {
-        return huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+        huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+        return;
     }
     const uint64_t fastEnd = length - padding;
     uint8_t * start = (dst + (*offset >> 3)); // byte-offset from bit-offset
@@ -506,24 +563,20 @@ int huffman_encoder_encode64_3(const huffman_encoder * encoder,
     dst[(*offset >> 3)+1] = 0;
     dst[(*offset >> 3)+2] = 0;
     dst[(*offset >> 3)+3] = 0;
-
-    return PNGENC_SUCCESS;
 }
 
 /**
  * Simple reference implementation.
  */
-int huffman_encoder_encode_simple(const huffman_encoder * encoder,
-                                  const uint8_t * src, uint32_t length,
-                                  uint8_t * dst, uint64_t * offset) {
+void huffman_encoder_encode_simple(const huffman_encoder * encoder,
+                                   const uint8_t * src, uint32_t length,
+                                   uint8_t * dst, uint64_t * offset) {
     size_t i = 0;
     for(; i < length; i++) {
         uint8_t current_byte = src[i];
         push_bits(encoder->symbols[current_byte],
                   encoder->code_lengths[current_byte], dst, offset);
     }
-
-    return PNGENC_SUCCESS;
 }
 
 /**
@@ -683,12 +736,12 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
     *bit_offset = offset;
 }
 
-int huffman_encoder_get_max_length(const huffman_encoder * encoder) {
+uint32_t huffman_encoder_get_max_length(const huffman_encoder * encoder) {
     uint32_t max_value = 0;
     for(int i = 0; i < HUFF_MAX_SIZE; i++) {
         max_value = max_u32(max_value, encoder->code_lengths[i]);
     }
-    return (int)max_value;
+    return max_value;
 }
 
 uint32_t huffman_encoder_get_num_literals(const huffman_encoder * encoder) {
