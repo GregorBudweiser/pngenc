@@ -98,8 +98,7 @@ uint32_t prepare_data_unfiltered(const pngenc_image_desc * image,
 int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
           pngenc_user_write_callback callback, void * user_data) {
 
-    pngenc_adler32 sum;
-    adler_init(&sum);
+    uint32_t sum = 1;
     uint32_t num_rows = encoder->buffer_size/(get_num_bytes_per_row(desc) + 1); // divide by filtered row size => allows us to keep tmp buffers smaller (consider desc->rowStride == 1)
     if (num_rows == 0) {
         return PNGENC_ERROR_INVALID_BUF;
@@ -129,8 +128,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
         uint8_t * tmp = encoder->tmp_buffers + (encoder->buffer_size*tid);
         uint8_t * dst = encoder->dst_buffers + (encoder->buffer_size*tid*2);
 
-        pngenc_adler32 local_sum;
-        adler_init(&local_sum);
+        uint32_t local_sum = 1;
         uint32_t num_bytes;
         int64_t result;
         uint8_t * const idat_ptr = dst;
@@ -144,7 +142,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
                     : prepare_data_filtered(desc, yStart, yEnd, tmp);
 
             // update adler
-            adler_update(&local_sum, tmp, num_bytes);
+            local_sum = adler_update(local_sum, tmp, num_bytes);
 
             // Idat hdr (part I)
             idat_header hdr = { 0, { 'I', 'D', 'A', 'T' } };
@@ -193,10 +191,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
             }
 
             // update adler
-            uint32_t comb = adler32_combine(adler_get_checksum(&sum),
-                                            adler_get_checksum(&local_sum),
-                                            num_bytes);
-            adler_set_checksum(&sum, comb);
+            sum = adler32_combine(sum, local_sum, num_bytes);
         }
     }
 
@@ -205,7 +200,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
     }
 
     // write adler checksum in its own idat block
-    uint32_t adler_checksum = swap_endianness32(adler_get_checksum(&sum));
+    uint32_t adler_checksum = swap_endianness32(sum);
     RETURN_ON_ERROR(write_idat_block((uint8_t*)&adler_checksum, 4, callback, user_data));
 
     return PNGENC_SUCCESS;

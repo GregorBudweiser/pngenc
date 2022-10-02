@@ -28,18 +28,16 @@ int perf_adler(int argc, char* argv[]) {
     }
 
     printf("Adler32:\n");
-    pngenc_adler32 adler32;
     for(i = 0; i < 5; i++) {
-        adler_init(&adler32);
+        uint32_t adler32 = 1;
         TIMING_START;
-        adler_update(&adler32, src, N*M);
+        adler_update(adler32, src, N*M);
         TIMING_END_MB(N);
     }
 
     printf("Crc32:\n");
-    uint32_t crc = 0xFFFFFFFF;
     for(i = 0; i < 5; i++) {
-        adler_init(&adler32);
+        uint32_t crc = 0xFFFFFFFF;
         TIMING_START;
         crc32c(crc, src, N*M);
         TIMING_END_MB(N);

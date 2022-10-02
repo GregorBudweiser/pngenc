@@ -1,35 +1,9 @@
 #include "adler32.h"
 #include <stdlib.h>
 
-uint32_t adler_get_checksum(const pngenc_adler32 * adler) {
-    return (adler->s2 << 16) | adler->s1;
-}
-
-
-void adler_set_checksum(pngenc_adler32 * adler, uint32_t checksum) {
-    adler->s1 = checksum & 0xFF;
-    adler->s2 = checksum >> 16;
-}
-
-void adler_init(pngenc_adler32 * adler) {
-    adler->s1 = 1;
-    adler->s2 = 0;
-}
-
-void adler_update(pngenc_adler32 * adler, const uint8_t * data,
-                  uint32_t length) {
-    if(sizeof(size_t) == 8) {
-        adler_update64(adler, data, length);
-    } else {
-        adler_update32(adler, data, length);
-    }
-}
-
-void adler_update64(pngenc_adler32 * adler, const uint8_t * data,
-                    uint32_t length) {
-
-    register uint32_t s1 = adler->s1;
-    register uint32_t s2 = adler->s2;
+uint32_t adler_update64(uint32_t adler, const uint8_t * data, uint32_t length) {
+    uint32_t s1 = adler & 0xFFFF;
+    uint32_t s2 = adler >> 16;
 
     // align to 8 byte
     while(length && (((size_t)data & 0x7) != 0)) {
@@ -39,9 +13,8 @@ void adler_update64(pngenc_adler32 * adler, const uint8_t * data,
         length--;
     }
 
-    const register uint32_t length8 = length >> 3;
+    const uint32_t length8 = length >> 3;
     const uint64_t *data64 = (const uint64_t*)data;
-
 
     uint32_t n = 0;
     uint32_t k = 0;
@@ -96,15 +69,12 @@ void adler_update64(pngenc_adler32 * adler, const uint8_t * data,
         s2 = (s2 + s1) % 65521;
     }
 
-    adler->s1 = s1;
-    adler->s2 = s2;
+    return s1 | (s2 << 16);
 }
 
-void adler_update32(pngenc_adler32 * adler, const uint8_t * data,
-                    uint32_t length) {
-
-    register uint32_t s1 = adler->s1;
-    register uint32_t s2 = adler->s2;
+uint32_t adler_update32(uint32_t adler, const uint8_t * data, uint32_t length) {
+    uint32_t s1 = adler & 0xFFFF;
+    uint32_t s2 = adler >> 16;
 
     // align to 8 byte
     while(length && (((size_t)data & 0x7) != 0)) {
@@ -116,7 +86,6 @@ void adler_update32(pngenc_adler32 * adler, const uint8_t * data,
 
     const register uint32_t length8 = length >> 2;
     const uint32_t *data64 = (const uint32_t*)data;
-
 
     uint32_t n = 0;
     uint32_t k = 0;
@@ -155,10 +124,21 @@ void adler_update32(pngenc_adler32 * adler, const uint8_t * data,
         s2 = (s2 + s1) % 65521;
     }
 
-    adler->s1 = s1;
-    adler->s2 = s2;
+    return s1 | (s2 << 16);
 }
 
+uint32_t adler_update(uint32_t adler, const uint8_t * data, uint32_t length) {
+    if(sizeof(size_t) == 8) {
+        return adler_update64(adler, data, length);
+    } else {
+        return adler_update32(adler, data, length);
+    }
+}
+
+/*
+ * Taken and adapted from zlib
+ */
+const int BASE = 65521U;
 uint32_t adler32_combine(uint32_t adler1, uint32_t adler2, size_t len2)
 {
     uint32_t sum1;
