@@ -38,13 +38,15 @@ static double get_time_passed_ms(time_type prev) {
     return (double)(li.QuadPart-prev)/(frequency*1E-3);
 }
 #else
-time_type get_timestamp() {
+typedef struct timespec time_type;
+
+static time_type get_timestamp() {
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     return now;
 }
 
-double get_time_passed_ms(time_type prev) {
+static double get_time_passed_ms(time_type prev) {
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
 
