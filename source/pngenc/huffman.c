@@ -701,27 +701,6 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
                     n_bits += encoder->code_lengths[byte];
                 }
             } else {
-                // length code
-                /*uint32_t l = length - 3;
-                int32_t num_extra_bits;
-        #if defined(_MSC_VER)
-                num_extra_bits = __lzcnt(l | 1);
-        #else
-                num_extra_bits = 31 - __builtin_clz(l | 1);
-        #endif
-                num_extra_bits = max_i32(num_extra_bits-2, 0);
-                uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> (uint16_t)num_extra_bits);
-
-                // length extra bits
-                uint32_t mask = (0x1 << num_extra_bits) - 1;
-                uint32_t extra_bits = l & mask;
-
-                window |= ((uint64_t)(encoder->symbols[length_symbol])) << n_bits;
-                n_bits += encoder->code_lengths[length_symbol];
-
-                window |= ((uint64_t)(extra_bits)) << n_bits;
-                n_bits += num_extra_bits+1;*/
-
                 window |= ((uint64_t)(tbl[length].bits)) << n_bits;
                 n_bits += tbl[length].nbits;
             }

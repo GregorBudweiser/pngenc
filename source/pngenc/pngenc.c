@@ -13,6 +13,8 @@ pngenc_encoder pngenc_create_encoder_default(void) {
 }
 
 pngenc_encoder pngenc_create_encoder(int32_t num_threads, uint32_t chunk_size) {
+    init_cpu_info();
+    crc32_init_sw();
     pngenc_encoder encoder =
             (pngenc_encoder)malloc(sizeof(struct _pngenc_encoder));
     encoder->num_threads = num_threads > 0

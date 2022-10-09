@@ -4,7 +4,6 @@ endif()
 
 file(GLOB pngenc_sources "*.c" "*.h")
 list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/main.c")
-list(REMOVE_ITEM pngenc_sources "${CMAKE_CURRENT_SOURCE_DIR}/iacaMarks.h")
 
 # set flags to activate dllexport on win
 add_library(pngenc SHARED ${pngenc_sources})

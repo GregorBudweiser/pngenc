@@ -34,7 +34,7 @@ int write_png_header(const pngenc_image_desc * desc,
         0  // no interlacing supported currently
     };
     uint32_t check_sum = swap_endianness32(
-                crc32c(0xffffffff, (uint8_t*)ihdr.name, 4+13)^0xffffffff);
+                crc32(0xffffffff, (uint8_t*)ihdr.name, 4+13)^0xffffffff);
     RETURN_ON_ERROR(callback(&ihdr, 4+4+13, user_data));
     RETURN_ON_ERROR(callback(&check_sum, 4, user_data));
 
@@ -50,7 +50,7 @@ int write_idat_block(const uint8_t * src, uint32_t len,
     RETURN_ON_ERROR(callback(src, len, user_data));
 
     // Checksum
-    uint32_t crc = crc32c(0xCA50F9E1, src, len);
+    uint32_t crc = crc32(0xCA50F9E1, src, len);
     crc = swap_endianness32(crc ^ 0xFFFFFFFF);
     RETURN_ON_ERROR(callback(&crc, sizeof(uint32_t), user_data));
 
@@ -61,6 +61,6 @@ int write_png_end(pngenc_user_write_callback callback,
                   void * user_data) {
     png_end iend = { 0, { 'I', 'E', 'N', 'D' }, 0 };
     iend.check_sum = swap_endianness32(
-                crc32c(0xffffffff, (uint8_t*)iend.name, 4) ^ 0xffffffff);
+                crc32(0xffffffff, (uint8_t*)iend.name, 4) ^ 0xffffffff);
     return callback(&iend, sizeof(iend), user_data);
 }

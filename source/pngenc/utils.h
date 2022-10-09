@@ -1,6 +1,12 @@
 #pragma once
 #include <stdint.h>
 
+#if defined(__i386) || defined(__x86_64) || defined(_M_AMD64)
+#define PNGENC_X86 1
+#else
+#define PNGENC_X86 0
+#endif
+
 #ifndef NDEBUG
 #include <stdio.h>
 #endif
@@ -22,6 +28,9 @@ float max_f32(float a, float b);
 float max_f32(float a, float b);
 
 uint32_t swap_endianness32(uint32_t value);
+
+void init_cpu_info();
+uint32_t has_x86_clmul();
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 

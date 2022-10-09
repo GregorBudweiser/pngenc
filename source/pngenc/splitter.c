@@ -175,7 +175,7 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
             memcpy(idat_ptr, &hdr, 8);
 
             // Idat end/checksum (starts with crc("IDAT"))
-            uint32_t crc = crc32c(0xCA50F9E1, idat_ptr+8, (size_t)result);
+            uint32_t crc = crc32(0xCA50F9E1, idat_ptr+8, (size_t)result);
             crc = swap_endianness32(crc ^ 0xFFFFFFFF);
             memcpy(dst, &crc, 4);
             dst += 4;
