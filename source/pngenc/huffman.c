@@ -6,6 +6,15 @@
 #include <assert.h>
 #include <stdio.h>
 
+// Enable/disable more timing info
+#if 0
+#include "../../tests/common.h"
+#else
+#define TIMING_START
+#define TIMING_END
+#define TIMING_END_MB(x)
+#endif
+
 static const uint8_t bit_reverse_table_256[] =
 {
   0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
@@ -507,8 +516,66 @@ void huffman_encoder_build_codes_from_lengths(huffman_encoder * encoder) {
 
 void huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src,
                             uint32_t length, uint8_t * dst, uint64_t * offset) {
-    // Cannot assume dst to be zeroed!
+#if defined(__x86_64__) || defined(_WIN64)
+    huffman_encoder_encode64_4(encoder, src, length, dst, offset);
+#else
     huffman_encoder_encode64_3(encoder, src, length, dst, offset);
+#endif
+}
+
+void huffman_encoder_encode64_4(const huffman_encoder * encoder, const uint8_t * src,
+                                uint32_t length, uint8_t * dst, uint64_t * offset) {
+    TIMING_START;
+    const uint32_t padding = 64; // 64 bit / min Symbol size
+    if(length <= padding) {
+        huffman_encoder_encode_simple(encoder, src, length, dst, offset);
+        return;
+    }
+
+    const uint16_t * sym = encoder->symbols;
+    const uint8_t * nbits = encoder->code_lengths;
+    const size_t fastEnd = length - padding;
+
+    uint64_t bit_offset = *offset;
+    uint8_t * dst2 = dst+(bit_offset>>3);
+    uint64_t window = *dst2;
+    uint64_t* window_ptr = (uint64_t*)dst2;
+
+    size_t i;
+    for(i = 0; i < fastEnd; i+=3) {
+        uint64_t local_bit_offset = bit_offset & 7;
+
+        // start with new local window to allow either unrolling or out-of-order processing
+        uint64_t accum_symbols = (uint64_t)(sym[src[i]]);
+        uint64_t accum_num_bits = nbits[src[i]];
+
+        accum_symbols |= (uint64_t)(sym[src[i+1]]) << accum_num_bits;
+        accum_num_bits += nbits[src[i+1]];
+
+        accum_symbols |= (uint64_t)(sym[src[i+2]]) << accum_num_bits;
+        accum_num_bits += nbits[src[i+2]];
+
+        // Combine
+        window |= accum_symbols << local_bit_offset;
+        local_bit_offset += accum_num_bits;
+        bit_offset = (bit_offset & ~7) + local_bit_offset;
+        *window_ptr = window;
+
+        // prepare next iteration
+        uint8_t * dst3 = dst+(bit_offset>>3);
+        window_ptr = (uint64_t*)dst3;
+        size_t bytes_moved = dst3 - dst2;
+        window = window >> (8*bytes_moved);
+        dst2 = dst3;
+    }
+
+    // Padding
+    for(; i < length; i++) {
+        push_bits(encoder->symbols[src[i]], encoder->code_lengths[src[i]], dst, &bit_offset);
+    }
+
+    *offset = bit_offset;
+    TIMING_END;
 }
 
 /**
@@ -518,6 +585,7 @@ void huffman_encoder_encode(const huffman_encoder * encoder, const uint8_t * src
 void huffman_encoder_encode64_3(const huffman_encoder * encoder,
                                 const uint8_t * src, uint32_t length,
                                 uint8_t * dst, uint64_t * offset) {
+    TIMING_START;
     const uint32_t padding = 32; // 64 bit / min Symbol size
     if(length <= padding) {
         huffman_encoder_encode_simple(encoder, src, length, dst, offset);
@@ -526,20 +594,20 @@ void huffman_encoder_encode64_3(const huffman_encoder * encoder,
     const uint64_t fastEnd = length - padding;
     uint8_t * start = (dst + (*offset >> 3)); // byte-offset from bit-offset
     start = (uint8_t*)((uintptr_t)start & ~0x3ULL); // 4-byte aligned
-    uint64_t bit_offset = *offset & 31;       // 4-byte aligned bit-offset
+    uint32_t bit_offset = *offset & 31ul;      // 4-byte aligned bit-offset
     uint32_t* ptr = (uint32_t*)start;         // Pointer to the current window
     uint64_t window = *ptr;
 
     uint64_t i = 0;
     for(; i < fastEnd; ) {
         // Add symbols until we have 32bits to write out
-        while(bit_offset < 32) {
+        do { // do first iteration unconditionally
             window |= ((uint64_t)encoder->symbols[src[i]]) << bit_offset;
             bit_offset += encoder->code_lengths[src[i]];
             window |= ((uint64_t)encoder->symbols[src[i+1]]) << bit_offset;
             bit_offset += encoder->code_lengths[src[i+1]];
             i += 2;
-        }
+        } while(bit_offset < 32);
 
         *ptr = (uint32_t)window; // Write out compressed stuff in chunks of 32bits
         window = window >> 32;
@@ -563,6 +631,7 @@ void huffman_encoder_encode64_3(const huffman_encoder * encoder,
     dst[(*offset >> 3)+1] = 0;
     dst[(*offset >> 3)+2] = 0;
     dst[(*offset >> 3)+3] = 0;
+    TIMING_END;
 }
 
 /**
