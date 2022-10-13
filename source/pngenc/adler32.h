@@ -2,7 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-uint32_t adler_update(uint32_t adler, const uint8_t * data, uint32_t length);
+uint32_t adler_update(uint32_t adler, const uint8_t * data, uint32_t len);
+
+uint32_t adler_update_hw(uint32_t adler, const uint8_t * data, size_t len);
 
 /*
  * Taken and adapted from zlib

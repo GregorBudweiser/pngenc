@@ -31,6 +31,13 @@ uint32_t swap_endianness32(uint32_t value);
 
 void init_cpu_info();
 uint32_t has_x86_clmul();
+uint32_t has_avx2();
+
+#ifdef _MSC_VER
+    #define ALIGN(x) __declspec(align(x))
+#else
+    #define ALIGN(x)  __attribute__((aligned(16)))
+#endif
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 

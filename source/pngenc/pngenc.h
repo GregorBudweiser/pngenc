@@ -111,7 +111,12 @@ typedef struct _pngenc_image_desc {
 } pngenc_image_desc;
 
 /**
- * Callback signature for custom output. @see pngenc_write_func()
+ * Callback signature for custom output.
+ *
+ * @param data chunk of encoded data
+ * @param data_len number of bytes
+ * @param pointer to user data provided in @see pngenc_encode()
+ * @returns non-zero in case of error
  */
 typedef int (*pngenc_user_write_callback)(const void * data, uint32_t data_len,
                                           void * user_data);

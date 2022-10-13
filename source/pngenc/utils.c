@@ -43,24 +43,38 @@ uint32_t swap_endianness32(uint32_t value) {
 }
 
 static uint32_t x86_clmul = 0;
+static uint32_t x86_avx2 = 0;
 
 void init_cpu_info() {
 #if PNGENC_X86
     uint32_t regs[4];
     uint32_t i = 1; // basic info
-  #ifdef _WIN32
-      __cpuid((int *)regs, (int)i);
-
+  #ifdef _MSC_VER
+    __cpuid((int *)regs, (int)i);
   #else
-      asm volatile
-        ("cpuid" : "=a" (regs[0]), "=b" (regs[1]), "=c" (regs[2]), "=d" (regs[3])
-         : "a" (i), "c" (0));
-      // ECX is set to zero for CPUID function 4
+    asm volatile
+      ("cpuid" : "=a" (regs[0]), "=b" (regs[1]), "=c" (regs[2]), "=d" (regs[3])
+       : "a" (i), "c" (0));
   #endif
-    x86_clmul = (regs[2] & 0x2) > 0;
+    x86_clmul = (regs[2] & (1 << 1)) > 0;
+
+    i = 7;
+  #ifdef _MSC_VER
+    __cpuid((int *)regs, (int)i);
+  #else
+    asm volatile
+      ("cpuid" : "=a" (regs[0]), "=b" (regs[1]), "=c" (regs[2]), "=d" (regs[3])
+       : "a" (i), "c" (0));
+    // ECX is set to zero for CPUID function 4
+  #endif
+    x86_avx2  = (regs[1] & (1 << 5)) > 0;
 #endif
 }
 
 uint32_t has_x86_clmul() {
     return x86_clmul;
+}
+
+uint32_t has_avx2() {
+    return x86_avx2;
 }

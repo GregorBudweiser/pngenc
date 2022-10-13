@@ -44,14 +44,13 @@ int integration_pipeline(int argc, char* argv[]) {
         memcpy(copies[i], buf, W*H*C);
     }
 
-
 #if defined(WIN32) || defined(__WIN32)
     const char * devNull = "nul";
 #else
     const char * devNull = "/dev/null";
 #endif
 
-    pngenc_encoder encoder = pngenc_create_encoder_default();
+    pngenc_encoder encoder = pngenc_create_encoder(0, 1024*1024);
     for(int i = 0; i < 20; i++) {
         desc.data = copies[i % 8];
         TIMING_START;

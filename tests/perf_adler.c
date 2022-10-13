@@ -2,6 +2,7 @@
 #include <string.h>
 #include "../source/pngenc/adler32.h"
 #include "../source/pngenc/crc32.h"
+#include "../source/pngenc/huffman.h"
 
 int perf_adler(int argc, char* argv[]) {
     UNUSED(argc);
@@ -36,6 +37,23 @@ int perf_adler(int argc, char* argv[]) {
         TIMING_END_MB(N);
     }
 
+    printf("Adler32_hw:\n");
+    for(i = 0; i < 5; i++) {
+        uint32_t adler32 = 1;
+        TIMING_START;
+        adler_update_hw(adler32, src, N*M);
+        TIMING_END_MB(N);
+    }
+
+    printf("Histogram:\n");
+    for(i = 0; i < 5; i++) {
+        huffman_encoder enc;
+        huffman_encoder_init(&enc);
+        TIMING_START;
+        huffman_encoder_add64(enc.histogram, src, N*M);
+        TIMING_END_MB(N);
+    }
+
     printf("Crc32:\n");
     for(i = 0; i < 5; i++) {
         uint32_t crc = 0xFFFFFFFF;
@@ -43,7 +61,6 @@ int perf_adler(int argc, char* argv[]) {
         crc32(crc, src, N*M);
         TIMING_END_MB(N);
     }
-
 
     return 0;
 }

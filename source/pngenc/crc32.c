@@ -58,11 +58,6 @@
 #include <wmmintrin.h>
 #endif
 
-#ifdef _MSC_VER
-    #define ALIGN(x) __declspec(align(x))
-#else
-    #define ALIGN(x)  __attribute__((aligned(16)))
-#endif
 
 /* CRC-32 (zlib) polynomial in reversed bit order. */
 #define POLY 0xEDB88320
