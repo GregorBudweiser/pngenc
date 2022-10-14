@@ -9,7 +9,7 @@
 #include <omp.h>
 
 pngenc_encoder pngenc_create_encoder_default(void) {
-    return pngenc_create_encoder(-1, 1024*1024);
+    return pngenc_create_encoder(0, 512*1024);
 }
 
 pngenc_encoder pngenc_create_encoder(int32_t num_threads, uint32_t chunk_size) {
@@ -20,12 +20,20 @@ pngenc_encoder pngenc_create_encoder(int32_t num_threads, uint32_t chunk_size) {
     encoder->num_threads = num_threads > 0
             ? num_threads
             : omp_get_max_threads();
+
+    chunk_size = (chunk_size+15) & ~15; // align to 16 bytes
+    // less than 64k per thread does not make much sense.
+    chunk_size = max_u32(chunk_size, 1024*64);
     encoder->buffer_size = chunk_size;
     encoder->tmp_buffers = malloc(chunk_size * encoder->num_threads);
+
+    // compressed data worst case: header + 15 bit per byte.
+    // if output size is 2*input size we have one bit spare per input byte
+    // as long as chunk_size is > 3K we're good
+    // (max 300bytes header won't overflow with at least 300*8bytes input data)
     encoder->dst_buffers = malloc(2ULL * chunk_size * encoder->num_threads);
     return encoder;
 }
-
 
 int pngenc_write(pngenc_encoder encoder,
                  const pngenc_image_desc * descriptor,

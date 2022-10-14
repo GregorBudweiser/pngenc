@@ -180,9 +180,9 @@ pngenc_encoder pngenc_create_encoder_default();
  *
  * @param chunk_size: Each thread will process chunk_size bytes of the input
  *        at once. Higher numbers cause better compression but possibly less
- *        parallelization and requires more memory. The default is ~1MB.
- *        For best performance, the chunk size must be a multiple of the
- *        processor's cache line size (typically 64 bytes).
+ *        parallelization and requires more memory.
+ *        For best performance, the chunk size will padded to a multiple of
+ *        16 bytes.
  *
  * @returns: Encoder handle.
  */

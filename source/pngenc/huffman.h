@@ -27,10 +27,6 @@ void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * symbols
                                     uint32_t length);
 void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * symbols,
                              uint32_t length);
-void huffman_encoder_add_rle_approx_simple(uint32_t *histogram, const uint8_t * symbols,
-                                           uint32_t length);
-void huffman_encoder_add_rle_approx(uint32_t *histogram, const uint8_t * symbols,
-                                    uint32_t length);
 
 void huffman_encoder_build_tree(huffman_encoder * encoder);
 void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,

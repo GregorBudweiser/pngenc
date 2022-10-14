@@ -284,7 +284,7 @@ int64_t write_deflate_block_rle(uint8_t * dst, const uint8_t * src,
     // literals; Set lengths for fixed tree (as per RFC1951)
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
-    huffman_encoder_add_rle_approx(encoder.histogram, src, num_bytes);
+    huffman_encoder_add_rle(encoder.histogram, src, num_bytes);
 
     uint64_t bit_offset = 0;
     write_header_rle(dst, &bit_offset, &encoder, &dist_encoder, last_block);
