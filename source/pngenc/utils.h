@@ -29,6 +29,10 @@ float max_f32(float a, float b);
 
 uint32_t swap_endianness32(uint32_t value);
 
+uint32_t highest_bit_set(uint32_t mask);
+uint32_t count_trailing_zeros(uint32_t mask);
+uint32_t count_leading_zeros(uint32_t mask);
+
 void init_cpu_info();
 uint32_t has_x86_clmul();
 uint32_t has_avx2();

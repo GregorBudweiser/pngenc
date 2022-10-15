@@ -42,6 +42,51 @@ uint32_t swap_endianness32(uint32_t value) {
          | ((value & 0x00FF0000) >> 8 ) | ((value & 0xFF000000) >> 24);
 }
 
+/**
+ * Get index of highest bit set
+ *
+ * @return index or 0 if mask == 0
+ */
+uint32_t highest_bit_set(uint32_t mask) {
+#if defined(_MSC_VER)
+        uint32_t highest_bit;
+        uint8_t was_non_zero = _BitScanReverse(&highest_bit, mask);
+        return highest_bit * was_non_zero;
+#else
+        return (31 - __builtin_clz(mask)) * (mask != 0);
+#endif
+}
+
+/**
+ * Counts trailing zeros
+ *
+ * @return number of leading zero or 0 if mask == 0
+ */
+uint32_t count_trailing_zeros(uint32_t mask) {
+#if defined(_MSC_VER)
+        uint32_t trailing_zeros;
+        uint8_t was_non_zero = _BitScanForward(&trailing_zeros, mask);
+        return (31 - trailing_zeros) * was_non_zero;
+#else
+        return __builtin_ctz(mask) * (mask != 0);
+#endif
+}
+
+/**
+ * Counts leading zeros
+ *
+ * @return number of leading zero or 0 if mask == 0
+ */
+uint32_t count_leading_zeros(uint32_t mask) {
+#if defined(_MSC_VER)
+        uint32_t leading_zeros;
+        uint8_t was_non_zero = _BitScanReverse(&leading_zeros, mask);
+        return (31 - leading_zeros) * was_non_zero;
+#else
+        return __builtin_clz(mask) * (mask != 0);
+#endif
+}
+
 static uint32_t x86_clmul = 0;
 static uint32_t x86_avx2 = 0;
 

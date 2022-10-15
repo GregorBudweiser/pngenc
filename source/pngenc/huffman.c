@@ -189,12 +189,7 @@ void huffman_encoder_add_rle_simple(uint32_t *histogram, const uint8_t * src,
             } else {
                 // length code
                 length -= 3;
-                int32_t num_extra_bits;
-        #if defined(_MSC_VER)
-                num_extra_bits = __lzcnt(length | 1);
-        #else
-                num_extra_bits = 31 - __builtin_clz(length | 1);
-        #endif
+                int32_t num_extra_bits = highest_bit_set(length);
                 num_extra_bits = max_i32(num_extra_bits-2, 0);
                 uint32_t length_symbol = 257 + (num_extra_bits << 2) + (length >> num_extra_bits);
                 histogram[length_symbol]++;
@@ -233,12 +228,7 @@ void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * src,
     for(uint32_t length = 3; length < MAX_LEN; length++) {
         // length code
         uint32_t l = length - 3;
-        int32_t num_extra_bits;
-#if defined(_MSC_VER)
-        num_extra_bits = __lzcnt(l | 1);
-#else
-        num_extra_bits = 31 - __builtin_clz(l | 1);
-#endif
+        int32_t num_extra_bits = highest_bit_set(l);
         num_extra_bits = max_i32(num_extra_bits-2, 0);
         uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> num_extra_bits);
         histogram[length_symbol] += lengths[length];
@@ -595,12 +585,7 @@ void huffman_encoder_encode_rle_simple(const huffman_encoder * encoder,
             } else {
                 // length code
                 length -= 3;
-                int32_t num_extra_bits;
-        #if defined(_MSC_VER)
-                num_extra_bits = __lzcnt(length | 1);
-        #else
-                num_extra_bits = 31 - __builtin_clz(length | 1);
-        #endif
+                int32_t num_extra_bits = highest_bit_set(length);
                 num_extra_bits = max_i32(num_extra_bits-2, 0);
                 uint32_t length_symbol = 257 + (num_extra_bits << 2) + (length >> num_extra_bits);
                 push_bits(encoder->symbols[length_symbol], encoder->code_lengths[length_symbol],
@@ -642,12 +627,8 @@ void huffman_encoder_encode_rle(const huffman_encoder * encoder,
     for(uint32_t length = 3; length < MAX_LEN; length++) {
         // length code
         uint32_t l = length - 3;
-        int32_t num_extra_bits;
-#if defined(_MSC_VER)
-        num_extra_bits = __lzcnt(l | 1);
-#else
-        num_extra_bits = 31 - __builtin_clz(l | 1);
-#endif
+        //printf("0x%08x\n", l);
+        int32_t num_extra_bits = highest_bit_set(l);
         num_extra_bits = max_i32(num_extra_bits-2, 0);
         uint32_t length_symbol = 257 + (num_extra_bits << 2) + (l >> (uint16_t)num_extra_bits);
 
