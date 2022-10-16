@@ -68,6 +68,9 @@ int integration_pipeline(int argc, char* argv[]) {
         TIMING_END;
     }
 
+    for (int i = 1; i < 8; i++) {
+        free(copies[i]);
+    }
     free(buf);
 
     return PNGENC_SUCCESS;

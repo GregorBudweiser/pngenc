@@ -60,6 +60,7 @@ int main() {
         }
     }
 
+    pngenc_destroy_encoder(enc);
     free(buf);
     return 0;
 }
