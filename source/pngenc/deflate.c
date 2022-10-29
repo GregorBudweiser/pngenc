@@ -12,7 +12,7 @@ void write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
-    huffman_encoder_build_tree_limited(encoder, 15, POW_95);
+    huffman_encoder_build_tree_limited(encoder, 15);
     huffman_encoder_build_codes_from_lengths(encoder);
 
     huffman_encoder code_length_encoder;
@@ -23,7 +23,7 @@ void write_header_huff_only(uint8_t * dst, uint64_t * bit_offset,
     code_length_encoder.histogram[0]++;
 
     // code length codes limited to 7 bits
-    huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80);
+    huffman_encoder_build_tree_limited(&code_length_encoder, 7);
     huffman_encoder_build_codes_from_lengths(&code_length_encoder);
 
     /*
@@ -178,10 +178,10 @@ void write_header_rle(uint8_t * dst, uint64_t * bit_offset,
     push_bits(2, 2, dst, bit_offset); // compressed block: dyn. huff. (10)_2
 
     encoder->histogram[256] = 1; // terminator
-    huffman_encoder_build_tree_limited(encoder, 15, POW_95);
+    huffman_encoder_build_tree_limited(encoder, 15);
     huffman_encoder_build_codes_from_lengths(encoder);
 
-    huffman_encoder_build_tree_limited(dist_encoder, 15, POW_95);
+    huffman_encoder_build_tree_limited(dist_encoder, 15);
     huffman_encoder_build_codes_from_lengths(dist_encoder);
 
     /*
@@ -209,7 +209,7 @@ void write_header_rle(uint8_t * dst, uint64_t * bit_offset,
     code_length_encoder.histogram[dist_encoder->code_lengths[1]]++;
 
     // code length codes limited to 7 bits
-    huffman_encoder_build_tree_limited(&code_length_encoder, 7, POW_80);
+    huffman_encoder_build_tree_limited(&code_length_encoder, 7);
     huffman_encoder_build_codes_from_lengths(&code_length_encoder);
 
     push_bits(HLIT,  5, dst, bit_offset);

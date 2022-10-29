@@ -30,7 +30,6 @@ create_test(unit_adler)
 create_test(unit_huffman)
 create_test(unit_crc)
 create_test(unit_deflate)
-create_test(unit_pow)
 create_test(unit_push_bits)
 
 # Integration tests

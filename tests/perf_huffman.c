@@ -48,7 +48,7 @@ int perf_encode(const uint8_t * buf, uint8_t * dst) {
     huffman_encoder encoder;
     huffman_encoder_init(&encoder);
     huffman_encoder_add(encoder.histogram, buf, C*W*H);
-    huffman_encoder_build_tree_limited(&encoder, 15, 0.8);
+    huffman_encoder_build_tree_limited(&encoder, 15);
     huffman_encoder_build_codes_from_lengths(&encoder);
 
     uint64_t offset;

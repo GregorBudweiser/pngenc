@@ -1,6 +1,5 @@
 #pragma once
 #include <stdint.h>
-#include "pow.h"
 
 #define HUFF_MAX_SIZE 288
 
@@ -29,8 +28,7 @@ void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * symbols,
                              uint32_t length);
 
 void huffman_encoder_build_tree(huffman_encoder * encoder);
-void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,
-                                        power_coefficient power);
+void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit);
 
 /**
  * Encode data using "huffman only" strategy.

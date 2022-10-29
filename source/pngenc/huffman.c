@@ -237,30 +237,65 @@ void huffman_encoder_add_rle(uint32_t *histogram, const uint8_t * src,
     TIMING_END;
 }
 
+typedef struct _sp {
+    uint16_t index;
+    int32_t probability;
+} sp;
+
+int sort_sp_by_p(void const* a, void const* b) {
+    return ((sp const*)a)->probability - ((sp const*)b)->probability;
+}
+
 /**
  * @param power: Higher values give better codes but need more iterations
  */
-void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit,
-                                        power_coefficient power) {
-    // TODO: Compute optimal tree (e.g. use optimal algorithm)
+void huffman_encoder_build_tree_limited(huffman_encoder * encoder, uint8_t limit) {
+    // build without limit first
     huffman_encoder_build_tree(encoder);
-    while(huffman_encoder_get_max_length(encoder) > limit) {
-        // nonlinearly reduce weight of nodes to lower max tree depth
-        switch(power) {
-        case POW_80:
-            for(int i = 0; i < HUFF_MAX_SIZE; i++) {
-                encoder->histogram[i] = fast_pow80(encoder->histogram[i]);
-            }
-            break;
-        case POW_95: // fallthrough
-        default:
-            for(int i = 0; i < HUFF_MAX_SIZE; i++) {
-                encoder->histogram[i] = fast_pow95(encoder->histogram[i]);
-            }
-            break;
-        }
-        huffman_encoder_build_tree(encoder);
+    if(huffman_encoder_get_max_length(encoder) <= limit) {
+        return;
     }
+
+    // code length counts
+    int16_t counts[32];
+    memset(counts, 0, sizeof(counts));
+    for(uint32_t i = 0; i < HUFF_MAX_SIZE; i++) {
+        counts[encoder->code_lengths[i]]++;
+    }
+
+    int16_t overflow = 0;
+    for(uint32_t i = 31; i > limit; i--) {
+        overflow += counts[i];
+        counts[i-1] += counts[i] >> 1;
+    }
+
+    do {
+        uint8_t bits = limit - 1;
+        while(counts[bits] == 0) {
+            bits--;
+            assert(bits > 0);
+        }
+        counts[bits]--;
+        counts[bits + 1] += 2;
+        overflow -= 2;
+    } while(overflow > 0);
+
+    // sort symbols by probability and keep symbol index to update later
+    sp list[HUFF_MAX_SIZE];
+    for(int i = 0; i < HUFF_MAX_SIZE; i++) {
+        list[i].probability = encoder->histogram[i];
+        list[i].index = i;
+    }
+
+    qsort(list, HUFF_MAX_SIZE, sizeof(sp), &sort_sp_by_p);
+    uint32_t j = counts[0];
+    for(int bits = limit; bits > 0; bits--) {
+        for(uint16_t i = 0; i < counts[bits]; i++) {
+            encoder->code_lengths[list[j].index] = bits;
+            j++;
+        }
+    }
+    assert(huffman_encoder_get_max_length(encoder) <= limit);
 }
 
 void huffman_encoder_build_tree(huffman_encoder * encoder) {

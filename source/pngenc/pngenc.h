@@ -76,7 +76,7 @@ typedef struct _pngenc_image_desc {
     /**
      * Pointer to image data.
      */
-    const uint8_t * data;
+    uint8_t * data;
 
     /**
      * Number of bytes per row + possibly padding.

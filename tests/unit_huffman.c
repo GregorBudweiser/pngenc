@@ -45,7 +45,7 @@ int test_huffman_build_tree() {
         encoder.histogram[256]++; // Add terminator symbol
 
         // Build tree and make sure we got 1-bit codes for the two symbols (everything else would not be efficient and wrong)
-        huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95);
+        huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT);
         ASSERT_TRUE(encoder.code_lengths[0] == 1);
         ASSERT_TRUE(encoder.code_lengths[256] == 1);
 
@@ -66,7 +66,7 @@ int test_huffman_build_tree() {
         }
 
         // Build tree
-        huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95);
+        huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT);
         ASSERT_TRUE(encoder.code_lengths[0] <= CODE_LENGTH_LIMIT);
         for(i = 1; i < HUFF_MAX_SIZE; i++) {
             ASSERT_TRUE(encoder.code_lengths[i] <= CODE_LENGTH_LIMIT);
@@ -87,10 +87,6 @@ int test_huffman_encode() {
     for(i = 0; i < N; i++) {
         src[i] = (uint8_t)rand();
     }
-    /*huffman_encoder_add(encoder.histogram, src, N);
-    encoder.histogram[256] = 1;
-    RETURN_ON_ERROR(huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95));
-    RETURN_ON_ERROR(huffman_encoder_build_codes_from_lengths(&encoder));*/
 
     // Set lengths for fixed tree (as per RFC1951)
     for(uint32_t i = 0; i <= 143; i++) {
@@ -142,7 +138,7 @@ int test_huffman_encode_multi() {
     }
 
     huffman_encoder_add(encoder.histogram, src, N);
-    huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT, 0.95);
+    huffman_encoder_build_tree_limited(&encoder, CODE_LENGTH_LIMIT);
     huffman_encoder_build_codes_from_lengths(&encoder);
 
     // Compute reference using simple shifting algorithm

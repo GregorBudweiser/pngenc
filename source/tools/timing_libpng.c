@@ -52,6 +52,11 @@ void write_png(const char * filename, int width, int height, uint8_t * data,
     png_write_image(png, row_pointers);
     png_write_end(png, NULL);
 
+    png_free_data(png, info, PNG_FREE_ALL, -1);
+    png_destroy_write_struct(&png, &info);
+    png_free(png, info);
+    png_free(png, png);
+
     free(row_pointers);
     fclose(fp);
 }
