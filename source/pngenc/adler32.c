@@ -208,9 +208,11 @@ uint32_t adler_update32(uint32_t adler, const uint8_t * data, uint32_t length) {
 }
 
 uint32_t adler_update(uint32_t adler, const uint8_t * data, uint32_t len) {
+#if PNGENC_X86
     if(has_avx2()) {
         return adler_update_hw(adler, data, len);
     }
+#endif
 
     if(sizeof(size_t) == 8) {
         return adler_update64(adler, data, len);

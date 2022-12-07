@@ -37,6 +37,7 @@ int perf_adler(int argc, char* argv[]) {
         TIMING_END_MB(N);
     }
 
+#if PNGENC_X86
     printf("Adler32_hw:\n");
     for(i = 0; i < 5; i++) {
         uint32_t adler32 = 1;
@@ -44,6 +45,7 @@ int perf_adler(int argc, char* argv[]) {
         adler_update_hw(adler32, src, N*M);
         TIMING_END_MB(N);
     }
+#endif
 
     printf("Histogram:\n");
     for(i = 0; i < 5; i++) {

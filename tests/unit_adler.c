@@ -3,6 +3,7 @@
 #include "common.h"
 #include "../source/pngenc/adler32.h"
 
+#if PNGENC_X86
 int test_adler_hw() {
     uint8_t buf[400];
     memset(buf, 0x01, sizeof(buf));
@@ -16,6 +17,11 @@ int test_adler_hw() {
     ASSERT_TRUE(hw == sw);
     return 0;
 }
+#else
+int test_adler_hw() {
+    return 0;
+}
+#endif
 
 int test_adler_single_call() {
     uint32_t adler = 1;
