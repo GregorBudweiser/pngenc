@@ -6,15 +6,20 @@
 #if PNGENC_X86
 #include <immintrin.h>
 
-uint32_t adler_update64(uint32_t adler, const uint8_t * data, uint32_t length);
-
 /*
- * Adapted from https://wooo.sh/articles/adler32.html
+ * Adapted from https://github.com/wooosh/fpng/
  */
 uint32_t adler_update_hw(uint32_t adler, const uint8_t * data, size_t len) {
+    const size_t N = 64;
     const __m256i ZERO = _mm256_setzero_si256();
     const __m256i ONE = _mm256_set1_epi16(1);
-    const __m256i COEFF = _mm256_set_epi8(
+    const __m256i COEFF_0 = _mm256_set_epi8(
+        33, 34, 35, 36, 37, 38, 39, 40,
+        41, 42, 43, 44, 45, 46, 47, 48,
+        49, 50, 51, 52, 53, 54, 55, 56,
+        57, 58, 59, 60, 61, 62, 63, 64
+    );
+    const __m256i COEFF_1 = _mm256_set_epi8(
         1,  2,  3,  4,  5,  6,  7,  8,
         9,  10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24,
@@ -24,10 +29,9 @@ uint32_t adler_update_hw(uint32_t adler, const uint8_t * data, size_t len) {
     uint32_t sum1 = adler & 0xFFFF;
     uint32_t sum2 = adler >> 16;
 
-    const size_t MAX_CHUNK_SIZE = 5536;
-    while (len >= 32) {
-        size_t chunk_len = len;
-        chunk_len -= chunk_len % 32;
+    const size_t MAX_CHUNK_SIZE = (5552/N)*N;
+    while (len >= N) {
+        size_t chunk_len = len - (len % N);
         if (chunk_len > MAX_CHUNK_SIZE) {
             chunk_len = MAX_CHUNK_SIZE;
         }
@@ -35,36 +39,31 @@ uint32_t adler_update_hw(uint32_t adler, const uint8_t * data, size_t len) {
 
         __m256i s1 = _mm256_setzero_si256();
         __m256i s2 = _mm256_setzero_si256();
+        __m256i s1_fold = _mm256_setzero_si256();
 
         const uint8_t *chunk_end = data + chunk_len;
-        while (data < chunk_end) {
-            __m256i cur = _mm256_loadu_si256(data);
-            data += 32;
+        for (;data < chunk_end; data += N) {
+            s1_fold = _mm256_add_epi64(s1_fold, s1);
+
+            __m256i cur0 = _mm256_loadu_si256(data);
+            __m256i cur1 = _mm256_loadu_si256(data + 32);
 
             // multiply each byte by the coefficient, and sum adjacent bytes into 16 bit integers
-            __m256i mad = _mm256_maddubs_epi16(cur, COEFF);
-            s2 = _mm256_add_epi32(s2, _mm256_madd_epi16(mad, ONE));
-
-            // add n*s1 to s2, where n=32
-            s2 = _mm256_add_epi32(s2, _mm256_slli_epi32(s1, 5));
+            __m256i mad0 = _mm256_maddubs_epi16(cur0, COEFF_0);
+            __m256i mad1 = _mm256_maddubs_epi16(cur1, COEFF_1);
+            s2 = _mm256_add_epi32(s2, _mm256_madd_epi16(mad0, ONE));
+            s2 = _mm256_add_epi32(s2, _mm256_madd_epi16(mad1, ONE));
 
             // sum every consecutive 8 bytes together into 4 64-bit integers, then add to s1
-            s1 = _mm256_add_epi32(s1, _mm256_sad_epu8(cur, ZERO));
+            s1 = _mm256_add_epi32(s1, _mm256_sad_epu8(cur0, ZERO));
+            s1 = _mm256_add_epi32(s1, _mm256_sad_epu8(cur1, ZERO));
         }
 
+        // add 64*s1_fold to s2
+        s2 = _mm256_add_epi32(s2, _mm256_slli_epi32(s1_fold, 6));
         sum2 += sum1 * chunk_len;
 
-        // horizontal sum
-        {
-            __m256i hsum = _mm256_hadd_epi32(s2, ZERO);
-            hsum = _mm256_hadd_epi32(hsum, ZERO);
-
-            __m256i hsum2 = _mm256_permute2f128_si256(hsum, hsum, 0b10000001);
-            hsum2 = _mm256_add_epi32(hsum, hsum2);
-            sum2 += _mm256_cvtsi256_si32(hsum2);
-        }
-
-        // horizontal sum
+        // horizontal sum s1
         {
             __m256i hsum = _mm256_hadd_epi32(s1, ZERO);
             hsum = _mm256_hadd_epi32(hsum, ZERO);
@@ -72,6 +71,16 @@ uint32_t adler_update_hw(uint32_t adler, const uint8_t * data, size_t len) {
             __m256i hsum2 = _mm256_permute2f128_si256(hsum, hsum, 0b10000001);
             hsum2 = _mm256_add_epi32(hsum, hsum2);
             sum1 += _mm256_cvtsi256_si32(hsum2);
+        }
+
+        // horizontal sum s2
+        {
+            __m256i hsum = _mm256_hadd_epi32(s2, ZERO);
+            hsum = _mm256_hadd_epi32(hsum, ZERO);
+
+            __m256i hsum2 = _mm256_permute2f128_si256(hsum, hsum, 0b10000001);
+            hsum2 = _mm256_add_epi32(hsum, hsum2);
+            sum2 += _mm256_cvtsi256_si32(hsum2);
         }
 
         sum1 %= 65521;

@@ -29,6 +29,19 @@ int perf_adler(int argc, char* argv[]) {
         TIMING_END_MB(N);
     }
 
+
+    printf("skimm through memory\n");
+    for(i = 0; i < 5; i++) {
+        TIMING_START;
+        const int end = N*M/8;
+        for(int j = 0; j < end; j++) {
+            volatile register uint64_t tmp = ((uint64_t*)src)[j];
+            UNUSED(tmp);
+        }
+        TIMING_END_MB(N);
+    }
+
+
     printf("Adler32:\n");
     for(i = 0; i < 5; i++) {
         uint32_t adler32 = 1;
@@ -44,6 +57,17 @@ int perf_adler(int argc, char* argv[]) {
         TIMING_START;
         adler_update_hw(adler32, src, N*M);
         TIMING_END_MB(N);
+    }
+
+    {
+        uint8_t buf[400];
+        memset(buf, 0x01, sizeof(buf));
+
+        const uint32_t hw = adler_update_hw(1, buf, sizeof(buf));
+        const uint32_t sw = adler_update64(1, buf, sizeof(buf));
+
+        printf("0x%08x\n", sw);
+        printf("0x%08x\n", hw);
     }
 #endif
 

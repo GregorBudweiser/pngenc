@@ -9,7 +9,7 @@ int test_adler_hw() {
     memset(buf, 0x01, sizeof(buf));
 
     const uint32_t hw = adler_update_hw(1, buf, sizeof(buf));
-    const uint32_t sw = adler_update(1, buf, sizeof(buf));
+    const uint32_t sw = adler_update64(1, buf, sizeof(buf));
 
     printf("0x%08x\n", sw);
     printf("0x%08x\n", hw);
