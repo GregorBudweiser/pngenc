@@ -1,6 +1,5 @@
 #include "huffman.h"
 #include "utils.h"
-#include "pngenc.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -82,13 +81,13 @@ void huffman_encoder_add64(uint32_t * histogram, const uint8_t * symbols,
     }
 
     uint16_t counters[4][256];
-    memset(counters, 0, 4*256*2);
     uint64_t l8 = length/8;
 
     const uint64_t * data = (const uint64_t*)symbols;
 
     // Each sub-histogram gets updated twice -> 2*0x7FFF = UINT16_MAX
     for(uint64_t start = 0; start < length; start += 0x7FFF) {
+        memset(counters, 0, 4*256*2);
         uint64_t end = min_u64(l8, start + 0x7FFF);
         for(uint64_t i = start; i < end; i++) {
             register uint64_t tmp = data[i];
@@ -106,7 +105,6 @@ void huffman_encoder_add64(uint32_t * histogram, const uint8_t * symbols,
             histogram[i] += counters[0][i] + counters[1][i]
                           + counters[2][i] + counters[3][i];
         }
-        memset(counters, 0, 4*256*2);
     }
 
     // Unpadded trailing bytes..
@@ -794,42 +792,4 @@ void push_bits(uint64_t bits, uint8_t nbits, uint8_t * dst,
         bits >>= 8;
         bits_remaining -= 8;
     }
-}
-
-/**
- * @brief Push bits to stream with 32-bit writes.
- *
- * Handles up to 64 bytes.
- *
- * Pre- and post-condition: Next 4 bytes are zeroed.
- */
-uint64_t push_bits_a(uint64_t bits, uint8_t nbits, uint8_t * dst,
-                     uint64_t bit_offset) {
-    assert(nbits <= 64);
-    dst += bit_offset >> 3;
-    uint32_t * dst32 = (uint32_t*)((size_t)dst & ~((size_t)0x3));
-    uint8_t shift = 8*((size_t)dst - (size_t)dst32) + (bit_offset & 0x7);
-    //uint64_t mask = ((uint64_t)1 << shift)-1;
-    uint64_t window = (uint64_t)(dst32[0]/* & mask*/) | (bits << shift);
-    dst32[0] = window;
-    dst32[1] = window >> 32;
-    dst32[2] = (bits >> (64-shift))*(shift > 0);
-    return bit_offset + nbits;
-}
-
-/**
- * @brief Push bits in a single unaligned 64bit write.
- *
- * Handles up to 56 bits.
- */
-uint64_t push_bits_u(uint64_t bits, uint8_t nbits, uint8_t * dst,
-                     uint64_t bit_offset) {
-    assert(nbits < 57);
-    dst += bit_offset >> 3;
-    uint8_t shift = bit_offset & 0x7;
-    uint64_t window = (bits << shift) | ((uint64_t)(*dst));
-
-    uint64_t * dst64u = (uint64_t*)dst;
-    *dst64u = window;
-    return bit_offset + nbits;
 }

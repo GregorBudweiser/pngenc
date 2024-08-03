@@ -45,7 +45,6 @@
    - Implemented hw path based on intel paper and fpng
  */
 
-#include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
 #include "utils.h"

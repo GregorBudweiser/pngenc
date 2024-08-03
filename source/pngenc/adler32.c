@@ -1,7 +1,6 @@
 #include "adler32.h"
 #include "utils.h"
-#include <stdlib.h>
-#include <assert.h>
+#include <stdint.h>
 
 #if PNGENC_X86
 #include <immintrin.h>

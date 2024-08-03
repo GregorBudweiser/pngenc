@@ -23,52 +23,49 @@ uint16_t swap_uint16(uint16_t val) {
  */
 uint32_t prepare_data_filtered(const pngenc_image_desc * image,
                                uint32_t yStart, uint32_t yEnd, uint8_t * dst) {
+
+    const uint8_t c = image->num_channels * image->bit_depth / 8;
+
     uint64_t y;
     const uint64_t bytes_per_row = get_num_bytes_per_row(image);
     for(y = yStart; y < yEnd; y++) {
         const uint8_t * src = image->data + y*image->row_stride;
         *dst++ = 1; // row filter
-        if(image->bit_depth == 8) {
-            // delta-x row filter
-            const uint8_t c = image->num_channels;
 
-            uint64_t i;
-            for(i = 0; i < c; i++)
-                dst[i] = src[i];
-#if defined(_MSC_VER) && defined(_WIN64)
-            // Use SSE impl only for MSVC. GCC and Clang do this already
-            for(i = 0; i < bytes_per_row-32; i+=16) {
-                __m128i a = _mm_loadu_si128((const __m128i*)(src + i));
-                __m128i b = _mm_loadu_si128((const __m128i*)(src +c + i));
-                _mm_storeu_si128((__m128i*)(dst + c + i), _mm_sub_epi8(b, a));
-            }
-            // trailing bytes
-            for(; i < bytes_per_row; i++)
-                dst[i] = src[i] - src[i-c];
-#else
-            for(i = c; i < bytes_per_row; i++)
-                dst[i] = src[i] - src[i-c];
-#endif
-            dst += bytes_per_row;
-
-        } else { // 16bit
-            // delta-x row filter filters MSB and LSB separately
-            // i.e. the filter is byte based rather than word based
-            const uint8_t c2 = image->num_channels*2;
-
-            uint64_t i;
-            for(i = 0; i < c2; i+=2) {
-                dst[i] = src[i+1];
-                dst[i+1] = src[i];
-            }
-
-            for(i = c2; i < bytes_per_row; i+=2) {
-                dst[i] = src[i+1] - src[i+1-c2];
-                dst[i+1] = src[1] - src[1-c2];
-            }
-
-            dst += bytes_per_row;
+        // preceeding bytes
+        uint64_t i;
+        for(i = 0; i < c; i++) {
+            dst[i] = src[i];
         }
+
+#if defined(_MSC_VER) && defined(_WIN64)
+        // Use SSE impl only for MSVC. GCC and Clang do this already
+        for(i = 0; i < bytes_per_row-32; i+=16) {
+            __m128i a = _mm_loadu_si128((const __m128i*)(src + i));
+            __m128i b = _mm_loadu_si128((const __m128i*)(src + i + c));
+            _mm_storeu_si128((__m128i*)(dst + i + c), _mm_sub_epi8(b, a));
+        }
+
+        // trailing bytes
+        for(; i < bytes_per_row; i++) {
+            dst[i] = src[i] - src[i-c];
+        }
+#else
+        for(i = c; i < bytes_per_row; i++)
+            dst[i] = src[i] - src[i-c];
+#endif
+
+        // TODO: Check for little endian; only then swap output to big endian
+        if (image->bit_depth == 16) {
+            uint64_t i;
+            for(i = 0; i < bytes_per_row; i+= 2) {
+                uint8_t tmp = dst[i+1];
+                dst[i+1] = src[i];
+                dst[i] = tmp;
+            }
+        }
+
+        dst += bytes_per_row;
     }
 
     return (yEnd - yStart)*(bytes_per_row + 1);

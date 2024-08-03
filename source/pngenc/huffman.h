@@ -85,7 +85,7 @@ void huffman_encoder_print(const huffman_encoder * encoder, const char * name);
 
 void push_bits(uint64_t bits, uint8_t nbits, uint8_t * data,
                uint64_t * bit_offset);
-uint64_t push_bits_a(uint64_t bits, uint8_t nbits, uint8_t * dst,
-                     uint64_t bit_offset);
-uint64_t push_bits_u(uint64_t bits, uint8_t nbits, uint8_t * dst,
-                     uint64_t bit_offset);
+//uint64_t push_bits_a(uint64_t bits, uint8_t nbits, uint8_t * dst,
+//                     uint64_t bit_offset);
+//uint64_t push_bits_u(uint64_t bits, uint8_t nbits, uint8_t * dst,
+//                     uint64_t bit_offset);
