@@ -158,6 +158,8 @@ int split(const pngenc_encoder encoder, const pngenc_image_desc * desc,
                 case PNGENC_RLE:
                     result = write_deflate_block_rle(dst, tmp, num_bytes, last_block);
                     break;
+                case PNGENC_AUTO:
+                    result = write_deflate_block_auto(dst, tmp, num_bytes, last_block);
             }
 
             if(result < 0) {

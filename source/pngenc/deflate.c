@@ -309,6 +309,58 @@ int64_t write_deflate_block_rle(uint8_t * dst, const uint8_t * src,
     }
 }
 
+int64_t write_deflate_block_auto(uint8_t * dst, const uint8_t * src,
+                                 uint32_t num_bytes, uint8_t last_block) {
+    // clear dst memory for header and first four bytes of stream
+    for (int i = 0; i < 287+4; i++) {
+        dst[i] = 0;
+    }
+
+    // distances
+    huffman_encoder dist_encoder;
+    huffman_encoder_init(&dist_encoder);
+    dist_encoder.code_lengths[0] = 1;
+    dist_encoder.code_lengths[1] = 1;
+
+    // literals; Set lengths for fixed tree (as per RFC1951)
+    huffman_encoder encoder;
+    huffman_encoder_init(&encoder);
+    huffman_encoder_add(encoder.histogram, src, num_bytes);
+
+    uint64_t bit_offset = 0;
+    // heuristic: if we have mostly zeroes use rle
+    if (encoder.histogram[0] > num_bytes / 16 * 13) {
+        for (uint32_t i = 256; i < 285; i++) {
+            encoder.histogram[i] = 1;
+        }
+        encoder.histogram[285] = 16; // give slightly better code to longest sequence
+        write_header_rle(dst, &bit_offset, &encoder, &dist_encoder, last_block);
+        huffman_encoder_encode_rle(&encoder, &dist_encoder, src, num_bytes, dst, &bit_offset);
+    } else {
+        write_header_huff_only(dst, &bit_offset, &encoder, last_block);
+        huffman_encoder_encode(&encoder, src, num_bytes, dst, &bit_offset);
+    }
+
+
+    // Terminator symbol (i.e. compressed block ends here)
+    push_bits(encoder.symbols[256], encoder.code_lengths[256],
+              dst, &bit_offset);
+
+    if (!last_block) {
+        // zflush with uncompressed block to achieve byte-alignment
+        push_bits(0, 3, dst, &bit_offset); // not last, uncompressed block
+        uint64_t encoded_bytes = (bit_offset + 7) / 8;
+        dst += encoded_bytes;
+        *dst++ = 0;
+        *dst++ = 0;
+        *dst++ = 0xFF;
+        *dst++ = 0xFF;
+        return (int64_t)encoded_bytes+4;
+    } else {
+        return (bit_offset + 7) / 8;
+    }
+}
+
 int64_t write_deflate_block_uncompressed(uint8_t * dst, const uint8_t * src,
                                          uint32_t num_bytes, uint8_t last_block) {
     struct zlib_header {

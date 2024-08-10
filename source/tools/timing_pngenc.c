@@ -30,13 +30,24 @@ int main() {
     desc.row_stride = W*C;
     desc.bit_depth = 8;
 
-    pngenc_encoder enc = pngenc_create_encoder(0, 1*1024*1024); // pngenc_create_encoder_default(); //
-    for(int mode = 0; mode < 3; mode++)
+// Manipulates image to see effects on file size for the different compression options
+#if 0
+    for (uint32_t y = 0; y < H; y++) {
+        for (uint32_t x = 0; x < W; x++) {
+            for (uint32_t c = 0; c < C; c++) {
+                buf[y*W*C + x*C + c] = 0; // buf[y*W*C + x*C + c] * 2 / 100;
+            }
+        }
+    }
+#endif
+
+    pngenc_encoder enc = pngenc_create_encoder(0, 1*512*1024); // pngenc_create_encoder_default(); //
+    for(int mode = 0; mode < 4; mode++)
     {
         desc.strategy = mode;
 
-        char* mode_str[3] = { "uncompressed", "huff_only", "rle" };
-        char* format[3] = { "pngenc_u_%03d.png", "pngenc_huff_%03d.png", "pngenc_rle_%03d.png"};
+        char* mode_str[4] = { "uncompressed", "huff_only", "rle", "auto" };
+        char* format[4] = { "pngenc_u_%03d.png", "pngenc_huff_%03d.png", "pngenc_rle_%03d.png", "pngenc_auto_%03d.png"};
         char name[1000];
         printf("Write to disk (mode = %s):\n", mode_str[mode]);
         for(int i = 0; i < 1; i++)

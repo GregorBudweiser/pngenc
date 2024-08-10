@@ -34,7 +34,14 @@ typedef enum _pngenc_compression_strategy {
      * Good compression.
      * Uses run length encoding and horizontal row-filter.
      */
-    PNGENC_RLE
+    PNGENC_RLE,
+
+    /**
+     * Same as PNGENC_HUFF_ONLY but falls back to RLE on files
+     * where significantly higher compression can be gained
+     * (i.e. uniform images such as graphics/text).
+     */
+    PNGENC_AUTO,
 } pngenc_compression_strategy;
 
 /**
